@@ -1,5 +1,84 @@
 #            Amalg -- Amalgamation of Lua Modules/Scripts            #
 
+##                           Introduction                           ##
+
+Deploying a Lua application that is split among multiple modules is a
+challenge. A tool that can package a Lua script and its modules into
+a single file is a valuable help. This is such a tool.
+
+Features:
+
+*   Pure Lua (compatible with both 5.1 and 5.2), no other external
+    dependencies. Works for Lua 5.1 and 5.2 modules (even those using
+    the deprecated `module` function).
+*   You don't have to take care of the order in which the modules are
+    `require`'d.
+*   Can collect `require`'d Lua modules automatically.
+
+What it doesn't do:
+
+*   It does not compile to bytecode. Use `luac` for that yourself, or
+    take a look at [squish][1], or [luac.lua][3].
+*   Debug information will point to the merged Lua script and not to
+    the original Lua modules. ([Squish][1] can do that).
+*   It doesn't do static analysis of Lua code to collect `require`'d
+    modules. That won't work reliably anyway. You can write your own
+    program for that (using the output of `luac -p -l`), or use
+    [squish][1], or [soar][3] instead.
+*   It will not compress, minify, obfuscate your Lua source code, or
+    any of the other things [squish][1] can do.
+
+There are alternatives to this program: See [squish][1], [LOOP][2],
+[soar][3], [luac.lua][4], and [bundle.lua][5] (and probably some
+more).
+
+  [1]: http://matthewwild.co.uk/projects/squish/home
+  [2]: http://loop.luaforge.net/release/preload.html
+  [3]: http://lua-users.org/lists/lua-l/2012-02/msg00609.html
+  [4]: http://www.tecgraf.puc-rio.br/~lhf/ftp/lua/5.1/luac.lua
+  [5]: https://github.com/akavel/scissors/blob/master/tools/bundle/bundle.lua
+
+
+##                          Getting Started                         ##
+
+You can bundle a collection of modules in a single file by calling the
+`amalg.lua` script and passing the module names on the commandline.
+
+    ./amalg.lua module1 module2
+
+The modules are collected using `package.path`, so they have to be
+available there. The resulting merged Lua code will be written to the
+standard output stream. You have to run the code to make the embedded
+Lua modules available for `require`.
+
+You can specify an output file to use instead of the standard output
+stream.
+
+    ./amalg.lua -o out.lua module1 module2
+
+You can also embed the main script of your application in the merged
+Lua code as well. Of course the embedded Lua modules can be
+`require`'d in the main script.
+
+    ./amalg.lua -o out.lua -s main.lua module1 module2
+
+To collect all Lua modules used by a program, you can load the
+`amalg.lua` script as a module, and it will intercept calls to
+`require` and save the necessary Lua module names in a file
+`amalg.cache` in the current directory.
+
+    lua -lamalg main.lua
+
+Multiple calls will add to this module cache. But don't access it from
+multiple concurrent processes!
+
+You can use the cache (in addition to all module names given on the
+commandline) using the `-c` flag.
+
+    ./amalg.lua -o out.lua -s main.lua -c
+
+That's it. For further info consult the source. Have fun!
+
 
 ##                              Contact                             ##
 

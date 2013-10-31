@@ -15,7 +15,7 @@ end
 
 
 local function parse_cmdline( ... )
-  local modules, use_cache, script, oname = {}, false
+  local modules, use_cache, dbg, script, oname = {}, false, false
 
   local function set_oname( v )
     if v then
@@ -55,6 +55,8 @@ local function parse_cmdline( ... )
       set_script( i <= n and select( i, ... ) )
     elseif a == "-c" then
       use_cache = true
+    elseif a == "-d" then
+      dbg = true
     else
       local prefix = a:sub( 1, 2 )
       if prefix == "-o" then
@@ -67,7 +69,7 @@ local function parse_cmdline( ... )
     end
     i = i + 1
   end
-  return oname, script, use_cache, modules
+  return oname, script, dbg, use_cache, modules
 end
 
 
@@ -75,7 +77,7 @@ local function readfile( path )
   local f = assert( io.open( path, "r" ) )
   local s = assert( f:read( "*a" ) )
   f:close()
-  return (s:gsub( "^#[^\n]*", "" ))
+  return s:gsub( "^#[^\n]*", "" ), s:sub( 1, 1 ) == "\027"
 end
 
 
@@ -96,12 +98,13 @@ local function writecache( c )
   f:write( "return {\n" )
   for k,v in pairs( c ) do
     if v and type( k ) == "string" then
-      f:write( "  [", ("%q"):format( k ), "] = true,\n" )
+      f:write( "  [ ", ("%q"):format( k ), " ] = true,\n" )
     end
   end
   f:write( "}\n" )
   f:close()
 end
+
 
 local searchpath = package.searchpath
 if not searchpath then
@@ -125,7 +128,7 @@ end
 
 
 local function amalgamate( ... )
-  local oname, script, use_cache, modules = parse_cmdline( ... )
+  local oname, script, dbg, use_cache, modules = parse_cmdline( ... )
 
   if use_cache then
     local c = readcache()
@@ -148,16 +151,29 @@ local function amalgamate( ... )
     if not path then
       error( "module `"..m.."' not found:"..msg )
     end
-    local bytes = readfile( path )
-    out:write( "local _ENV = _ENV\n",
-               "package.preload[ ", ("%q"):format( m ),
-               " ] = function( ... ) _ENV = _ENV\n",
-               bytes, "\nend\n\n" )
+    local bytes, is_bin = readfile( path )
+    if is_bin or dbg then
+      out:write( "package.preload[ ", ("%q"):format( m ),
+                 " ] = assert( (loadstring or load)(\n",
+                 ("%q"):format( bytes ), "\n, '@'..",
+                 ("%q"):format( path ), " ) )\n\n" )
+    else
+      out:write( "local _ENV = _ENV\n",
+                 "package.preload[ ", ("%q"):format( m ),
+                 " ] = function( ... ) _ENV = _ENV\n",
+                 bytes, "\nend\n\n" )
+    end
   end
 
   if script then
-    local bytes = readfile( script )
-    out:write( "local _ENV = _ENV\ndo\n", bytes, "\nend\n\n" )
+    local bytes, is_bin = readfile( script )
+    if is_bin or dbg then
+      out:write( "assert( (loadstring or load)(\n",
+                 ("%q"):format( bytes ), "\n, '@'..",
+                 ("%q"):format( script ), " ) )( ... )\n\n" )
+    else
+      out:write( "local _ENV = _ENV\ndo\n", bytes, "\nend\n\n" )
+    end
   end
 
   if oname then

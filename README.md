@@ -19,8 +19,6 @@ What it doesn't do:
 
 *   It does not compile to bytecode. Use `luac` for that yourself, or
     take a look at [squish][1], or [luac.lua][3].
-*   Debug information will point to the merged Lua script and not to
-    the original Lua modules. ([Squish][1] can do that).
 *   It doesn't do static analysis of Lua code to collect `require`'d
     modules. That won't work reliably anyway. You can write your own
     program for that (using the output of `luac -p -l`), or use
@@ -61,6 +59,12 @@ Lua code as well. Of course the embedded Lua modules can be
 `require`'d in the main script.
 
     ./amalg.lua -o out.lua -s main.lua module1 module2
+
+If you want the original file names and line numbers to appear in
+error messages, you have to activate debug mode. This will require
+slightly more memory, however.
+
+    ./amalg.lua -o out.lua -d -s main.lua module1 module2
 
 To collect all Lua modules used by a program, you can load the
 `amalg.lua` script as a module, and it will intercept calls to

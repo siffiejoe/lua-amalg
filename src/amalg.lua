@@ -74,7 +74,7 @@ end
 
 
 local function readfile( path )
-  local f = assert( io.open( path, "r" ) )
+  local f = assert( io.open( path, "rb" ) )
   local s = assert( f:read( "*a" ) )
   f:close()
   return s:gsub( "^#[^\n]*", "" ), s:sub( 1, 1 ) == "\027"

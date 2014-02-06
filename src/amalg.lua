@@ -73,11 +73,25 @@ local function parse_cmdline( ... )
 end
 
 
+local function is_binary( path )
+  local f, res = io.open( path, "rb" ), false
+  if f then
+    res = f:read( 1 ) == "\027"
+    f:close()
+  end
+  return res
+end
+
+
 local function readfile( path )
-  local f = assert( io.open( path, "rb" ) )
+  local is_bin = is_binary( path )
+  local f = assert( io.open( path, is_bin and "rb" or "r" ) )
   local s = assert( f:read( "*a" ) )
   f:close()
-  return s:gsub( "^#[^\n]*", "" ), s:sub( 1, 1 ) == "\027"
+  if not is_bin then
+    s = s:gsub( "^#[^\n]*", "" )
+  end
+  return s, is_bin
 end
 
 

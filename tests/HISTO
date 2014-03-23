@@ -1,0 +1,37 @@
+#!/bin/bash -e
+set -e
+
+LUAV=5.1
+LUAV=5.2
+LUAV=5.3
+
+echo "Using Lua $LUAV ..."
+luac$LUAV -o module1.luac module1.lua
+luac$LUAV -o module2.luac module2.lua
+
+lua$LUAV ../src/amalg.lua -o modules.lua module1 module2
+echo -n "amalgamate modules only ... "
+lua$LUAV -l modules main.lua
+
+lua$LUAV ../src/amalg.lua -o textout.lua -s main.lua module1 module2
+echo -n "amalgamate modules and script in text form ... "
+lua$LUAV textout.lua
+
+lua$LUAV -e 'package.path = "./?.luac;"..package.path' ../src/amalg.lua -o binout.lua -s main.lua module1 module2
+echo -n "amalgamate modules and script in binary form ... "
+lua$LUAV binout.lua
+
+lua$LUAV ../src/amalg.lua -o debugout.lua -d -s main.lua module1 module2
+echo -n "amalgamate modules and script with debug info ... "
+lua$LUAV debugout.lua
+
+echo -n "collect module names using amalg.lua as a module ... "
+lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' -l amalg main.lua
+echo -n "amalgamate modules and script using amalg.cache ... "
+lua$LUAV ../src/amalg.lua -o cacheout.lua -s main.lua -c
+lua$LUAV cacheout.lua
+
+exit 0
+
+rm -f module1.luac module2.luac modules.lua textout.lua binout.lua debugout.lua cacheout.lua amalg.cache
+

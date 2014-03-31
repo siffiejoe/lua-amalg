@@ -84,6 +84,18 @@ commandline) using the `-c` flag.
 That's it. For further info consult the source. Have fun!
 
 
+##                              Gotchas                             ##
+
+1.  If you are using Lua 5.1 with the `LUA_COMPAT_VARARG` flag defined
+    (the default), and you do your command line parsing in a module,
+    `arg` will *not* refer to the global `arg` table, but to a local
+    compatibility table that holds the same contents as the `...` list
+    of the module function (i.e. the required module name). Possible
+    workarounds are to use `_G.arg` in your module, to use the debug
+    flag `-d` for `amalg.lua`, or to precompile the argument parsing
+    module and put the binary module in the amalgamation.
+
+
 ##                              Contact                             ##
 
 Philipp Janda, siffiejoe(a)gmx.net

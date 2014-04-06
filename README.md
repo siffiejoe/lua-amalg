@@ -81,19 +81,16 @@ commandline) using the `-c` flag.
 
     ./amalg.lua -o out.lua -s main.lua -c
 
+To fix a compatibility issue with Lua 5.1's vararg handling,
+`amalg.lua` by default adds a local alias to the global `arg` table to
+every loaded module. If for some reason you don't want that, use the
+`-a` flag (but be aware that in Lua 5.1 with `LUA_COMPAT_VARARG`
+defined (the default) your modules can only access the global `arg`
+table as `_G.arg`).
+
+    ./amalg.lua -o out.lua -a -s main.lua -c
+
 That's it. For further info consult the source. Have fun!
-
-
-##                              Gotchas                             ##
-
-1.  If you are using Lua 5.1 with the `LUA_COMPAT_VARARG` flag defined
-    (the default), and you do your command line parsing in a module,
-    `arg` will *not* refer to the global `arg` table, but to a local
-    compatibility table that holds the same contents as the `...` list
-    of the module function (i.e. the required module name). Possible
-    workarounds are to use `_G.arg` in your module, to use the debug
-    flag `-d` for `amalg.lua`, or to precompile the argument parsing
-    module and put the binary module in the amalgamation.
 
 
 ##                              Contact                             ##
@@ -108,7 +105,7 @@ Comments and feedback are always welcome.
 `amalg` is *copyrighted free software* distributed under the MIT
 license (the same license as Lua 5.1). The full license text follows:
 
-    amalg (c) 2013 Philipp Janda
+    amalg (c) 2013-2014 Philipp Janda
 
     Permission is hereby granted, free of charge, to any person obtaining
     a copy of this software and associated documentation files (the

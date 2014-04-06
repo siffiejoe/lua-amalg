@@ -2,8 +2,8 @@
 set -e
 
 LUAV=5.1
-LUAV=5.2
-LUAV=5.3
+#LUAV=5.2
+#LUAV=5.3
 
 echo "Using Lua $LUAV ..."
 luac$LUAV -o module1.luac module1.lua
@@ -21,6 +21,10 @@ lua$LUAV -e 'package.path = "./?.luac;"..package.path' ../src/amalg.lua -o binou
 echo -n "amalgamate modules and script in binary form ... "
 lua$LUAV binout.lua
 
+lua$LUAV ../src/amalg.lua -o afixout.lua -a -s main.lua module1 module2
+echo -n "amalgamate modules and script with arg fix ... "
+lua$LUAV afixout.lua
+
 lua$LUAV ../src/amalg.lua -o debugout.lua -d -s main.lua module1 module2
 echo -n "amalgamate modules and script with debug info ... "
 lua$LUAV debugout.lua
@@ -33,5 +37,5 @@ lua$LUAV cacheout.lua
 
 exit 0
 
-rm -f module1.luac module2.luac modules.lua textout.lua binout.lua debugout.lua cacheout.lua amalg.cache
+rm -f module1.luac module2.luac modules.lua textout.lua binout.lua afixout.lua debugout.lua cacheout.lua amalg.cache
 

@@ -15,7 +15,7 @@ end
 
 
 local function parse_cmdline( ... )
-  local modules, use_cache, dbg, script, oname = {}, false, false
+  local modules, afix, use_cache, dbg, script, oname = {}, true
 
   local function set_oname( v )
     if v then
@@ -57,6 +57,8 @@ local function parse_cmdline( ... )
       use_cache = true
     elseif a == "-d" then
       dbg = true
+    elseif a == "-a" then
+      afix = false
     else
       local prefix = a:sub( 1, 2 )
       if prefix == "-o" then
@@ -69,7 +71,7 @@ local function parse_cmdline( ... )
     end
     i = i + 1
   end
-  return oname, script, dbg, use_cache, modules
+  return oname, script, dbg, afix, use_cache, modules
 end
 
 
@@ -142,7 +144,7 @@ end
 
 
 local function amalgamate( ... )
-  local oname, script, dbg, use_cache, modules = parse_cmdline( ... )
+  local oname, script, dbg, afix, use_cache, modules = parse_cmdline( ... )
 
   if use_cache then
     local c = readcache()
@@ -174,7 +176,8 @@ local function amalgamate( ... )
     else
       out:write( "local _ENV = _ENV\n",
                  "package.preload[ ", ("%q"):format( m ),
-                 " ] = function( ... ) _ENV = _ENV\n",
+                 " ] = function( ... ) ",
+                 afix and "local arg = _G.arg\n" or "_ENV = _ENV\n",
                  bytes, "\nend\n\n" )
     end
   end

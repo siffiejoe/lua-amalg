@@ -6,8 +6,8 @@ source = {
 description = {
   summary = "Amalgamation for Lua modules/scripts.",
   detailed = [[
-    This small Lua module/scripts can package a Lua script and its
-    dependecies (Lua modules only) as a single Lua file for easier
+    This small Lua module/script can package a Lua script and its
+    dependencies (Lua modules only) as a single Lua file for easier
     deployment.
   ]],
   homepage = "https://github.com/siffiejoe/lua-amalg/",

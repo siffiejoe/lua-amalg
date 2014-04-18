@@ -177,7 +177,7 @@ local function amalgamate( ... )
       out:write( "local _ENV = _ENV\n",
                  "package.preload[ ", ("%q"):format( m ),
                  " ] = function( ... ) ",
-                 afix and "local arg = _G.arg\n" or "_ENV = _ENV\n",
+                 afix and "local arg = _G.arg;\n" or "_ENV = _ENV;\n",
                  bytes, "\nend\n\n" )
     end
   end

@@ -222,7 +222,7 @@ end
 -- binary chunks, shebang lines, `-d` command line flag) some
 -- preprocessing/escaping is necessary. This function reads a whole
 -- Lua file and returns the contents as a Lua string.
-local function readfile( path )
+local function readluafile( path )
   local is_bin = is_binary( path )
   local f = assert( io.open( path, is_bin and "rb" or "r" ) )
   local s = assert( f:read( "*a" ) )
@@ -317,7 +317,7 @@ local function amalgamate( ... )
   -- so that the resulting amalgamation can be run without explicitly
   -- specifying the interpreter on unixoid systems.
   if script then
-    out:write( "#!/usr/bin/env lua\n\n" )
+    out:write( "#!/usr/bin/env lua\n\ndo\n\n" )
   end
 
   -- Every module given on the command line and/or in the cache file
@@ -327,7 +327,7 @@ local function amalgamate( ... )
     if not path then
       error( "module `"..m.."' not found:"..msg )
     end
-    local bytes, is_bin = readfile( path )
+    local bytes, is_bin = readluafile( path )
     if is_bin or dbg then
       -- Precompiled Lua modules are loaded via the standard Lua
       -- function `load` (or `loadstring` in Lua 5.1). Since this
@@ -363,13 +363,14 @@ local function amalgamate( ... )
   -- embed it now that all dependent modules are available to
   -- `require`.
   if script then
-    local bytes, is_bin = readfile( script )
+    out:write( "end\n\n" )
+    local bytes, is_bin = readluafile( script )
     if is_bin or dbg then
       out:write( "assert( (loadstring or load)(\n",
                  ("%q"):format( bytes ), "\n, '@'..",
                  ("%q"):format( script ), " ) )( ... )\n\n" )
     else
-      out:write( "local _ENV = _ENV\ndo\n", bytes, "\nend\n\n" )
+      out:write( bytes )
     end
   end
 

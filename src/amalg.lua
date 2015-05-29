@@ -259,8 +259,9 @@ local function writecache( c )
   local f = assert( io.open( cache, "w" ) )
   f:write( "return {\n" )
   for k,v in pairs( c ) do
-    if v and type( k ) == "string" then
-      f:write( "  [ ", ("%q"):format( k ), " ] = true,\n" )
+    if type( k ) == "string" and type( v ) == "string" then
+      f:write( "  [ ", ("%q"):format( k ), " ] = ",
+               ("%q"):format( v ), ",\n" )
     end
   end
   f:write( "}\n" )
@@ -298,13 +299,14 @@ end
 -- source.
 local function amalgamate( ... )
   local oname, script, dbg, afix, use_cache, modules = parse_cmdline( ... )
+  local errors = {}
 
   -- When instructed to on the command line, the cache file is loaded,
   -- and the modules are added to the ones listed on the command line.
   if use_cache then
     local c = readcache()
-    for k in pairs( c or {} ) do
-      modules[ k ] = true
+    for k,v in pairs( c or {} ) do
+      modules[ k ] = v
     end
   end
 
@@ -322,40 +324,52 @@ local function amalgamate( ... )
 
   -- Every module given on the command line and/or in the cache file
   -- is processed.
-  for m in pairs( modules ) do
-    local path, msg  = searchpath( m, package.path )
-    if not path then
-      error( "module `"..m.."' not found:"..msg )
-    end
-    local bytes, is_bin = readluafile( path )
-    if is_bin or dbg then
-      -- Precompiled Lua modules are loaded via the standard Lua
-      -- function `load` (or `loadstring` in Lua 5.1). Since this
-      -- preserves file name and line number information, this
-      -- approach is used for all files if the debug mode is active
-      -- (`-d` command line option).
-      out:write( "package.preload[ ", ("%q"):format( m ),
-                 " ] = assert( (loadstring or load)(\n",
-                 ("%q"):format( bytes ), "\n, '@'..",
-                 ("%q"):format( path ), " ) )\n\n" )
-    else
-      -- Under normal circumstances Lua files are pasted into a
-      -- new anonymous vararg function, which then is put into
-      -- `package.preload` so that `require` can find it. Each
-      -- function gets its own `_ENV` upvalue (on Lua 5.2+), and
-      -- special care is taken that `_ENV` always is the first
-      -- upvalue (important for the `module` function on Lua 5.2).
-      -- Lua 5.1 compiled with `LUA_COMPAT_VARARG` (the default) will
-      -- create a local `arg` variable to emulate the vararg handling
-      -- of Lua 5.0. This might interfere with Lua modules that access
-      -- command line arguments via the `arg` global. As a workaround
-      -- `amalg.lua` adds a local alias to the global `arg` table
-      -- unless the `-a` command line flag is specified.
-      out:write( "local _ENV = _ENV\n",
-                 "package.preload[ ", ("%q"):format( m ),
-                 " ] = function( ... ) ",
-                 afix and "local arg = _G.arg;\n" or "_ENV = _ENV;\n",
-                 bytes, "\nend\n\n" )
+  for m,t in pairs( modules ) do
+    -- Only Lua modules are handled for now, so modules that are
+    -- definitely C modules are skipped.
+    if t ~= "C" then
+      local path, msg  = searchpath( m, package.path )
+      if not path and t == "L" then
+        -- The module is supposed to be a Lua module, but it cannot
+        -- be found, so an error is raised.
+        error( "module `"..m.."' not found:"..msg )
+      elseif not path then
+        -- Module possibly is a C module, so it is tried again later.
+        -- But the current error message is saved in case the given
+        -- name isn't a C module either.
+        modules[ m ], errors[ m ] = "C", msg
+      else
+        local bytes, is_bin = readluafile( path )
+        if is_bin or dbg then
+          -- Precompiled Lua modules are loaded via the standard Lua
+          -- function `load` (or `loadstring` in Lua 5.1). Since this
+          -- preserves file name and line number information, this
+          -- approach is used for all files if the debug mode is active
+          -- (`-d` command line option).
+          out:write( "package.preload[ ", ("%q"):format( m ),
+                     " ] = assert( (loadstring or load)(\n",
+                     ("%q"):format( bytes ), "\n, '@'..",
+                     ("%q"):format( path ), " ) )\n\n" )
+        else
+          -- Under normal circumstances Lua files are pasted into a
+          -- new anonymous vararg function, which then is put into
+          -- `package.preload` so that `require` can find it. Each
+          -- function gets its own `_ENV` upvalue (on Lua 5.2+), and
+          -- special care is taken that `_ENV` always is the first
+          -- upvalue (important for the `module` function on Lua 5.2).
+          -- Lua 5.1 compiled with `LUA_COMPAT_VARARG` (the default) will
+          -- create a local `arg` variable to emulate the vararg handling
+          -- of Lua 5.0. This might interfere with Lua modules that access
+          -- command line arguments via the `arg` global. As a workaround
+          -- `amalg.lua` adds a local alias to the global `arg` table
+          -- unless the `-a` command line flag is specified.
+          out:write( "local _ENV = _ENV\n",
+                     "package.preload[ ", ("%q"):format( m ),
+                     " ] = function( ... ) ",
+                     afix and "local arg = _G.arg;\n" or "_ENV = _ENV;\n",
+                     bytes, "\nend\n\n" )
+        end
+      end
     end
   end
 
@@ -397,19 +411,29 @@ local function collect()
                             or setmetatable( {}, { __gc = true } )
   getmetatable( sentinel ).__gc = function() writecache( c ) end
   local lua_searcher = searchers[ 2 ]
+  local c_searcher = searchers[ 3 ]
+  local aio_searcher = searchers[ 4 ] -- all in one searcher
 
-  local function rv_handler( mname, ... )
+  local function rv_handler( tag, mname, ... )
     if type( (...) ) == "function" then
-      c[ mname ] = true
+      c[ mname ] = tag
     end
     return ...
   end
 
-  -- The replacement searcher just forwards to the original version,
+  -- The replacement searchers just forward to the original version,
   -- but also updates the cache if the search was successful.
   searchers[ 2 ] = function( ... )
     local _ = sentinel -- make sure that sentinel is an upvalue
-    return rv_handler( ..., lua_searcher( ... ) )
+    return rv_handler( "L", ..., lua_searcher( ... ) )
+  end
+  searchers[ 3 ] = function( ... )
+    local _ = sentinel -- make sure that sentinel is an upvalue
+    return rv_handler( "C", ..., c_searcher( ... ) )
+  end
+  searchers[ 4 ] = function( ... )
+    local _ = sentinel -- make sure that sentinel is an upvalue
+    return rv_handler( "C", ..., aio_searcher( ... ) )
   end
 
   -- Since calling `os.exit` might skip the `lua_close()` call, the

@@ -22,7 +22,7 @@ echo -n "amalgamate modules and script in binary form ... "
 lua$LUAV binout.lua
 
 lua$LUAV ../src/amalg.lua -o afixout.lua -a -s main.lua module1 module2
-echo -n "amalgamate modules and script with arg fix ... "
+echo -n "amalgamate modules and script without arg fix ... "
 lua$LUAV afixout.lua
 
 lua$LUAV ../src/amalg.lua -o debugout.lua -d -s main.lua module1 module2

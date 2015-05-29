@@ -1,0 +1,6 @@
+# docco output
+docs/
+
+# temporary files
+.*.swp
+

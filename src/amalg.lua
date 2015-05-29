@@ -79,7 +79,7 @@
 -- necessary Lua module names in a file `amalg.cache` in the current
 -- directory:
 --
--- lua -lamalg main.lua
+--     lua -lamalg main.lua
 --
 -- Multiple calls will add to this module cache. But don't access it
 -- from multiple concurrent processes (the cache isn't protected

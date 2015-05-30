@@ -258,6 +258,20 @@ local function readluafile( path )
 end
 
 
+-- Lua 5.1 doesn't convert all control characters to decimal escape
+-- sequences like the newer Lua versions do. This might cause problems
+-- when loading a Lua script (opened in text mode) which contains
+-- binary code on some platforms (i.e. Windows).
+local function escape_code( code )
+  local s = ("%q"):format( code )
+  return (s:gsub( "%c", function( c )
+    if c ~= "\n" then
+      return ("\\%03d"):format( c:byte() )
+    end
+  end ))
+end
+
+
 -- When the `-c` command line flag is given, the contents of the cache
 -- file `amalg.cache` are used to specify the modules to embed. This
 -- function is used to load the cache file:
@@ -370,7 +384,7 @@ local function amalgamate( ... )
           -- (`-d` command line option).
           out:write( "package.preload[ ", ("%q"):format( m ),
                      " ] = assert( (loadstring or load)(\n",
-                     ("%q"):format( bytes ), "\n, '@'..",
+                     escape_code( bytes ), "\n, '@'..",
                      ("%q"):format( path ), " ) )\n\n" )
         else
           -- Under normal circumstances Lua files are pasted into a
@@ -385,11 +399,11 @@ local function amalgamate( ... )
           -- command line arguments via the `arg` global. As a workaround
           -- `amalg.lua` adds a local alias to the global `arg` table
           -- unless the `-a` command line flag is specified.
-          out:write( "local _ENV = _ENV\n",
+          out:write( "do\nlocal _ENV = _ENV\n",
                      "package.preload[ ", ("%q"):format( m ),
                      " ] = function( ... ) ",
                      afix and "local arg = _G.arg;\n" or "_ENV = _ENV;\n",
-                     bytes, "\nend\n\n" )
+                     bytes, "\nend\nend\n\n" )
         end
       end
     end
@@ -454,10 +468,11 @@ local dllnames = {}
         if not nfuncs[ path ] then
           local code = readfile( path, true )
           nfuncs[ path ] = true
+          local qcode = escape_code( code )
           out:write( prefix, "dllnames[ ", qpath, [=[ ] = function()
   local dll = newdllname()
   local f = assert( io.open( dll, "wb" ) )
-  f:write( ]=], ("%q"):format( code ), [=[ )
+  f:write( ]=], qcode, [=[ )
   f:close()
   dllnames[ ]=], qpath, [=[ ] = function() return dll end
   return dll
@@ -498,7 +513,7 @@ end
     local bytes, is_bin = readluafile( script )
     if is_bin or dbg then
       out:write( "assert( (loadstring or load)(\n",
-                 ("%q"):format( bytes ), "\n, '@'..",
+                 escape_code( bytes ), "\n, '@'..",
                  ("%q"):format( script ), " ) )( ... )\n\n" )
     else
       out:write( bytes )

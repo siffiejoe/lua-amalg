@@ -222,7 +222,7 @@ end
 -- the normal way of pasting the source code, so this function detects
 -- whether a file is a binary file (Lua bytecode starts with the `ESC`
 -- character):
-local function is_binary_lua( path )
+local function is_bytecode( path )
   local f, res = io.open( path, "rb" ), false
   if f then
     res = f:read( 1 ) == "\027"
@@ -248,7 +248,7 @@ end
 -- preprocessing/escaping is necessary. This function reads a whole
 -- Lua file and returns the contents as a Lua string.
 local function readluafile( path )
-  local is_bin = is_binary_lua( path )
+  local is_bin = is_bytecode( path )
   local s = readfile( path, is_bin )
   if not is_bin then
     -- Shebang lines are only supported by Lua at the very beginning
@@ -418,7 +418,11 @@ local function amalgamate( ... )
     local nfuncs = {}
     local prefix = [=[
 local assert = assert
+local newproxy = newproxy
+local getmetatable = assert( getmetatable )
+local setmetatable = assert( setmetatable )
 local os_tmpname = assert( os.tmpname )
+local os_remove = assert( os.remove )
 local io_open = assert( io.open )
 local string_sub = assert( string.sub )
 local package_loadlib = assert( package.loadlib )
@@ -470,10 +474,10 @@ local dllnames = {}
         -- library, and the amalgamated code has to simulate that.
         -- Shared dynamic libraries are embedded only once.
         --
-        -- The temporary dynamic library files are not cleaned up at
-        -- the moment, because this cleanup would have to happen
-        -- before the libraries are unloaded (at least on Lua 5.2+),
-        -- and this probably won't work at least on Windows.
+        -- The temporary dynamic library files may or may not be
+        -- cleaned up when the amalgamated code exits (this probably
+        -- works on POSIX machines (all Lua versions) and on Windows
+        -- with Lua 5.1).
         if not nfuncs[ path ] then
           local code = readfile( path, true )
           nfuncs[ path ] = true
@@ -483,7 +487,13 @@ local dllnames = {}
   local f = assert( io_open( dll, "wb" ) )
   f:write( ]=], qcode, [=[ )
   f:close()
-  dllnames[ ]=], qpath, [=[ ] = function() return dll end
+  local sentinel = newproxy and newproxy( true )
+                            or setmetatable( {}, { __gc = true } )
+  getmetatable( sentinel ).__gc = function() os_remove( dll ) end
+  dllnames[ ]=], qpath, [=[ ] = function()
+    local _ = sentinel
+    return dll
+  end
   return dll
 end
 

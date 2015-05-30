@@ -265,9 +265,9 @@ end
 -- Windows).
 local function qformat( code )
   local s = ("%q"):format( code )
-  return (s:gsub( "%c", function( c )
+  return (s:gsub( "(%c)(%d?)", function( c, d )
     if c ~= "\n" then
-      return ("\\%03d"):format( c:byte() )
+      return (d~="" and "\\%03d" or "\\%d"):format( c:byte() )..d
     end
   end ))
 end

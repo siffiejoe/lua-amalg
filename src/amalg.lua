@@ -22,7 +22,9 @@
 --     of `luac -p -l`), or use [squish][1], or [soar][3] instead.
 -- *   It will not compress, minify, obfuscate your Lua source code,
 --     or any of the other things [squish][1] can do.
--- *   It doesn't handle the possible dependencies of C modules.
+-- *   It doesn't handle the dependencies of C modules, so it is best
+--     used on C modules without dependencies (e.g. LuaSocket, LFS,
+--     etc.).
 --
 -- The `amalg.lua` [source code][6] is available on GitHub, and is
 -- released under the [MIT license][7]. You can view [a nice HTML
@@ -97,8 +99,8 @@
 --
 --     ./amalg.lua -o out.lua -s main.lua -c -x
 --
--- This will make the amalgamated script platform-dependent,
--- obviously!
+-- This will make the amalgamated script platform- and Lua version
+-- dependent, obviously!
 --
 -- To fix a compatibility issue with Lua 5.1's vararg handling,
 -- `amalg.lua` by default adds a local alias to the global `arg` table
@@ -220,7 +222,7 @@ end
 -- the normal way of pasting the source code, so this function detects
 -- whether a file is a binary file (Lua bytecode starts with the `ESC`
 -- character):
-local function is_binary( path )
+local function is_binary_lua( path )
   local f, res = io.open( path, "rb" ), false
   if f then
     res = f:read( 1 ) == "\027"
@@ -246,7 +248,7 @@ end
 -- preprocessing/escaping is necessary. This function reads a whole
 -- Lua file and returns the contents as a Lua string.
 local function readluafile( path )
-  local is_bin = is_binary( path )
+  local is_bin = is_binary_lua( path )
   local s = readfile( path, is_bin )
   if not is_bin then
     -- Shebang lines are only supported by Lua at the very beginning
@@ -260,9 +262,9 @@ end
 
 -- Lua 5.1's `string.format("%q")` doesn't convert all control
 -- characters to decimal escape sequences like the newer Lua versions
--- do. This might cause problems when loading a Lua script (opened in
--- text mode) which contains binary code on some platforms (i.e.
--- Windows).
+-- do. This might cause problems on some platforms (i.e. Windows) when
+-- loading a Lua script (opened in text mode) that contains binary
+-- code.
 local function qformat( code )
   local s = ("%q"):format( code )
   return (s:gsub( "(%c)(%d?)", function( c, d )
@@ -415,6 +417,12 @@ local function amalgamate( ... )
   if cmods then
     local nfuncs = {}
     local prefix = [=[
+local assert = assert
+local os_tmpname = assert( os.tmpname )
+local io_open = assert( io.open )
+local string_sub = assert( string.sub )
+local package_loadlib = assert( package.loadlib )
+
 local dirsep = package.config:match( "^([^\n]+)" )
 local tmpdir
 if dirsep == "\\" then
@@ -422,9 +430,9 @@ if dirsep == "\\" then
                    "could not detect temp directory" )
 end
 local function newdllname()
-  local tmpname = assert( os.tmpname() )
+  local tmpname = assert( os_tmpname() )
   if dirsep == "\\" then
-    local first = tmpname:sub( 1, 1 )
+    local first = string_sub( tmpname, 1, 1 )
     local hassep = first == "\\" or first == "/"
     tmpname = tmpdir..((hassep) and "" or "\\")..tmpname
   end
@@ -436,7 +444,8 @@ local dllnames = {}
     for m,t in pairs( modules ) do
       if t == "C" then
         -- Try a search strategy similar to the standard C module
-        -- searcher first and then the all-in-one strategy.
+        -- searcher first and then the all-in-one strategy to locate
+        -- the library files for the C modules to embed.
         local path, msg  = searchpath( m, package.cpath )
         if not path then
           errors[ m ] = (errors[ m ] or "") .. msg
@@ -464,14 +473,14 @@ local dllnames = {}
         -- The temporary dynamic library files are not cleaned up at
         -- the moment, because this cleanup would have to happen
         -- before the libraries are unloaded (at least on Lua 5.2+),
-        -- and this probably won't work on Windows.
+        -- and this probably won't work at least on Windows.
         if not nfuncs[ path ] then
           local code = readfile( path, true )
           nfuncs[ path ] = true
           local qcode = qformat( code )
           out:write( prefix, "dllnames[ ", qpath, [=[ ] = function()
   local dll = newdllname()
-  local f = assert( io.open( dll, "wb" ) )
+  local f = assert( io_open( dll, "wb" ) )
   f:write( ]=], qcode, [=[ )
   f:close()
   dllnames[ ]=], qpath, [=[ ] = function() return dll end
@@ -490,14 +499,14 @@ end
         out:write( "package.preload[ ", qm, " ] = function()\n",
                    "  local dll = dllnames[ ", qpath, " ]()\n" )
         if openf1 then
-          out:write( "  local loader = package.loadlib( dll, ",
+          out:write( "  local loader = package_loadlib( dll, ",
                      qformat( "luaopen_"..openf1 ), " )\n",
                      "  if not loader then\n",
-                     "    loader = assert( package.loadlib( dll, ",
+                     "    loader = assert( package_loadlib( dll, ",
                      qformat( "luaopen_"..openf2 ),
                      " ) )\n  end\n" )
         else
-          out:write( "  local loader = assert( package.loadlib( dll, ",
+          out:write( "  local loader = assert( package_loadlib( dll, ",
                      qformat( "luaopen_"..openf ), " ) )\n" )
         end
         out:write( "  return loader( ", qm, ", dll )\nend\n\n" )

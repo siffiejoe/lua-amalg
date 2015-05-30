@@ -8,9 +8,9 @@ a single file is a valuable help. This is such a tool.
 
 Features:
 
-*   Pure Lua (compatible with both 5.1 and 5.2), no other external
-    dependencies. Works for Lua 5.1 and 5.2 modules (even those using
-    the deprecated `module` function).
+*   Pure Lua (compatible with Lua 5.1 and up), no other external
+    dependencies. (Even works for modules using the deprecated
+    `module` function.)
 *   You don't have to take care of the order in which the modules are
     `require`'d.
 *   Can embed compiled C modules.
@@ -26,7 +26,7 @@ What it doesn't do:
     [squish][1], or [soar][3] instead.
 *   It will not compress, minify, obfuscate your Lua source code, or
     any of the other things [squish][1] can do.
-*   It doesn't handle the possible dependencies of C modules.
+*   It doesn't handle the dependencies of C modules.
 
 There are alternatives to this program: See [squish][1], [LOOP][2],
 [soar][3], [luac.lua][4], and [bundle.lua][5] (and probably some

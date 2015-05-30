@@ -258,11 +258,12 @@ local function readluafile( path )
 end
 
 
--- Lua 5.1 doesn't convert all control characters to decimal escape
--- sequences like the newer Lua versions do. This might cause problems
--- when loading a Lua script (opened in text mode) which contains
--- binary code on some platforms (i.e. Windows).
-local function escape_code( code )
+-- Lua 5.1's `string.format("%q")` doesn't convert all control
+-- characters to decimal escape sequences like the newer Lua versions
+-- do. This might cause problems when loading a Lua script (opened in
+-- text mode) which contains binary code on some platforms (i.e.
+-- Windows).
+local function qformat( code )
   local s = ("%q"):format( code )
   return (s:gsub( "%c", function( c )
     if c ~= "\n" then
@@ -296,8 +297,7 @@ local function writecache( c )
   f:write( "return {\n" )
   for k,v in pairs( c ) do
     if type( k ) == "string" and type( v ) == "string" then
-      f:write( "  [ ", ("%q"):format( k ), " ] = ",
-               ("%q"):format( v ), ",\n" )
+      f:write( "  [ ", qformat( k ), " ] = ", qformat( v ), ",\n" )
     end
   end
   f:write( "}\n" )
@@ -382,10 +382,10 @@ local function amalgamate( ... )
           -- preserves file name and line number information, this
           -- approach is used for all files if the debug mode is active
           -- (`-d` command line option).
-          out:write( "package.preload[ ", ("%q"):format( m ),
+          out:write( "package.preload[ ", qformat( m ),
                      " ] = assert( (loadstring or load)(\n",
-                     escape_code( bytes ), "\n, '@'..",
-                     ("%q"):format( path ), " ) )\n\n" )
+                     qformat( bytes ), "\n, '@'..",
+                     qformat( path ), " ) )\n\n" )
         else
           -- Under normal circumstances Lua files are pasted into a
           -- new anonymous vararg function, which then is put into
@@ -400,7 +400,7 @@ local function amalgamate( ... )
           -- `amalg.lua` adds a local alias to the global `arg` table
           -- unless the `-a` command line flag is specified.
           out:write( "do\nlocal _ENV = _ENV\n",
-                     "package.preload[ ", ("%q"):format( m ),
+                     "package.preload[ ", qformat( m ),
                      " ] = function( ... ) ",
                      afix and "local arg = _G.arg;\n" or "_ENV = _ENV;\n",
                      bytes, "\nend\nend\n\n" )
@@ -445,7 +445,7 @@ local dllnames = {}
             error( "module `"..m.."' not found:"..errors[ m ]..msg )
           end
         end
-        local qpath = ("%q"):format( path )
+        local qpath = qformat( path )
         -- Build the symbol(s) to look for in the dynamic library.
         -- There may be multiple candidates because of optional
         -- version information in the module names and the different
@@ -468,7 +468,7 @@ local dllnames = {}
         if not nfuncs[ path ] then
           local code = readfile( path, true )
           nfuncs[ path ] = true
-          local qcode = escape_code( code )
+          local qcode = qformat( code )
           out:write( prefix, "dllnames[ ", qpath, [=[ ] = function()
   local dll = newdllname()
   local f = assert( io.open( dll, "wb" ) )
@@ -486,19 +486,19 @@ end
         -- behavior of Lua 5.3 which is to strip version information
         -- from the module name at the end first, and then at the
         -- beginning if that failed.
-        local qm = ("%q"):format( m )
+        local qm = qformat( m )
         out:write( "package.preload[ ", qm, " ] = function()\n",
                    "  local dll = dllnames[ ", qpath, " ]()\n" )
         if openf1 then
           out:write( "  local loader = package.loadlib( dll, ",
-                     ("%q"):format( "luaopen_"..openf1 ), " )\n",
+                     qformat( "luaopen_"..openf1 ), " )\n",
                      "  if not loader then\n",
                      "    loader = assert( package.loadlib( dll, ",
-                     ("%q"):format( "luaopen_"..openf2 ),
+                     qformat( "luaopen_"..openf2 ),
                      " ) )\n  end\n" )
         else
           out:write( "  local loader = assert( package.loadlib( dll, ",
-                     ("%q"):format( "luaopen_"..openf ), " ) )\n" )
+                     qformat( "luaopen_"..openf ), " ) )\n" )
         end
         out:write( "  return loader( ", qm, ", dll )\nend\n\n" )
       end -- is a C module
@@ -513,8 +513,8 @@ end
     local bytes, is_bin = readluafile( script )
     if is_bin or dbg then
       out:write( "assert( (loadstring or load)(\n",
-                 escape_code( bytes ), "\n, '@'..",
-                 ("%q"):format( script ), " ) )( ... )\n\n" )
+                 qformat( bytes ), "\n, '@'..",
+                 qformat( script ), " ) )( ... )\n\n" )
     else
       out:write( bytes )
     end

@@ -5,6 +5,14 @@ LUAV=5.1
 #LUAV=5.2
 #LUAV=5.3
 
+INC=/usr/include/lua$LUAV
+if [ ! -d "$INC" ]; then
+  INC=/home/siffiejoe/.self/programs/lua$LUAV
+fi
+
+gcc -Wall -Wextra -Os -fpic -I"$INC" -shared -o cmod.so cmod.c
+gcc -Wall -Wextra -Os -fpic -I"$INC" -shared -o aiomod.so aiomod.c
+
 echo "Using Lua $LUAV ..."
 luac$LUAV -o module1.luac module1.lua
 luac$LUAV -o module2.luac module2.lua
@@ -35,7 +43,11 @@ echo -n "amalgamate modules and script using amalg.cache ... "
 lua$LUAV ../src/amalg.lua -o cacheout.lua -s main.lua -c
 lua$LUAV cacheout.lua
 
+echo -n "amalgamate Lua modules, Lua script and C modules ... "
+lua$LUAV ../src/amalg.lua -o cmodout.lua -s main.lua -c -x
+lua$LUAV -e 'package.cpath = ""' cmodout.lua
+
 exit 0
 
-rm -f module1.luac module2.luac modules.lua textout.lua binout.lua afixout.lua debugout.lua cacheout.lua amalg.cache
+rm -f module1.luac module2.luac modules.lua textout.lua binout.lua afixout.lua debugout.lua cacheout.lua cmodout.lua amalg.cache cmod.so aiomod.so
 

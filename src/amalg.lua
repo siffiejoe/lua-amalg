@@ -9,19 +9,20 @@
 --     `module` function.)
 -- *   You don't have to take care of the order in which the modules
 --     are `require`d.
--- *   Can collect `require`d Lua modules automatically.
+-- *   Can embed compiled C modules.
+-- *   Can collect `require`d Lua (and C) modules automatically.
 --
 -- What it doesn't do:
 --
 -- *   It does not compile to bytecode. Use `luac` for that yourself,
 --     or take a look at [squish][1], or [luac.lua][4].
--- *   It does not include C modules.
 -- *   It doesn't do static analysis of Lua code to collect `require`d
 --     modules. That won't work reliable anyway in a dynamic language!
 --     You can write your own program for that (e.g. using the output
 --     of `luac -p -l`), or use [squish][1], or [soar][3] instead.
 -- *   It will not compress, minify, obfuscate your Lua source code,
 --     or any of the other things [squish][1] can do.
+-- *   It doesn't handle the possible dependencies of C modules.
 --
 -- The `amalg.lua` [source code][6] is available on GitHub, and is
 -- released under the [MIT license][7]. You can view [a nice HTML
@@ -73,8 +74,8 @@
 --
 --     ./amalg.lua -o out.lua -d -s main.lua module1 module2
 --
--- To collect all Lua modules used by a program, you can load the
--- `amalg.lua` script as a module, and it will intercept calls to
+-- To collect all Lua (and C) modules used by a program, you can load
+-- the `amalg.lua` script as a module, and it will intercept calls to
 -- `require` (more specifically the Lua module searcher) and save the
 -- necessary Lua module names in a file `amalg.cache` in the current
 -- directory:
@@ -89,6 +90,15 @@
 -- command line) using the `-c` flag:
 --
 --     ./amalg.lua -o out.lua -s main.lua -c
+--
+-- However, this will only embed the Lua modules. To also embed the C
+-- modules (both from the cache and from the command line), you have
+-- to specify the `-x` flag:
+--
+--     ./amalg.lua -o out.lua -s main.lua -c -x
+--
+-- This will make the amalgamated script platform-dependent,
+-- obviously!
 --
 -- To fix a compatibility issue with Lua 5.1's vararg handling,
 -- `amalg.lua` by default adds a local alias to the global `arg` table
@@ -134,6 +144,7 @@ end
 --     messages will point to the original location)
 -- *   `-a`: do *not* apply the `arg` fix (local alias for the global
 --     `arg` table)
+-- *   `-x`: also embed compiled C modules
 -- *   `--`: stop parsing command line flags (all remaining arguments
 --     are considered module names)
 --
@@ -141,7 +152,7 @@ end
 -- command line (e.g. duplicate options) a warning is printed to the
 -- console.
 local function parse_cmdline( ... )
-  local modules, afix, use_cache, dbg, script, oname = {}, true
+  local modules, afix, use_cache, cmods, dbg, script, oname = {}, true
 
   local function set_oname( v )
     if v then
@@ -181,6 +192,8 @@ local function parse_cmdline( ... )
       set_script( i <= n and select( i, ... ) )
     elseif a == "-c" then
       use_cache = true
+    elseif a == "-x" then
+      cmods = true
     elseif a == "-d" then
       dbg = true
     elseif a == "-a" then
@@ -199,7 +212,7 @@ local function parse_cmdline( ... )
     end
     i = i + 1
   end
-  return oname, script, dbg, afix, use_cache, modules
+  return oname, script, dbg, afix, use_cache, cmods, modules
 end
 
 
@@ -217,16 +230,24 @@ local function is_binary( path )
 end
 
 
--- Files to be embedded into the resulting amalgamation are read into
--- memory in a single go, because under some circumstances (e.g.
+-- Read the whole contents of a file into memory without any
+-- processing.
+local function readfile( path, is_bin )
+  local f = assert( io.open( path, is_bin and "rb" or "r" ) )
+  local s = assert( f:read( "*a" ) )
+  f:close()
+  return s
+end
+
+
+-- Lua files to be embedded into the resulting amalgamation are read
+-- into memory in a single go, because under some circumstances (e.g.
 -- binary chunks, shebang lines, `-d` command line flag) some
 -- preprocessing/escaping is necessary. This function reads a whole
 -- Lua file and returns the contents as a Lua string.
 local function readluafile( path )
   local is_bin = is_binary( path )
-  local f = assert( io.open( path, is_bin and "rb" or "r" ) )
-  local s = assert( f:read( "*a" ) )
-  f:close()
+  local s = readfile( path, is_bin )
   if not is_bin then
     -- Shebang lines are only supported by Lua at the very beginning
     -- of a source file, so they have to be removed before the source
@@ -252,9 +273,10 @@ local function readcache()
 end
 
 
--- When loaded as a module, `amalg.lua` collects Lua modules that are
--- `require`d and updates the cache file `amalg.cache`. This function
--- saves the updated cache contents to the file:
+-- When loaded as a module, `amalg.lua` collects Lua modules and C
+-- modules that are `require`d and updates the cache file
+-- `amalg.cache`. This function saves the updated cache contents to
+-- the file:
 local function writecache( c )
   local f = assert( io.open( cache, "w" ) )
   f:write( "return {\n" )
@@ -270,8 +292,8 @@ end
 
 
 -- The standard Lua function `package.searchpath` available in Lua 5.2
--- and up is used to locate the source files for Lua modules. For Lua
--- 5.1 a backport is provided.
+-- and up is used to locate the source files for Lua modules and
+-- library files for C modules. For Lua 5.1 a backport is provided.
 local searchpath = package.searchpath
 if not searchpath then
   local delim = package.config:match( "^(.-)\n" ):gsub( "%%", "%%%%" )
@@ -298,7 +320,7 @@ end
 -- collects the module and script sources, and writes the amalgamated
 -- source.
 local function amalgamate( ... )
-  local oname, script, dbg, afix, use_cache, modules = parse_cmdline( ... )
+  local oname, script, dbg, afix, use_cache, cmods, modules = parse_cmdline( ... )
   local errors = {}
 
   -- When instructed to on the command line, the cache file is loaded,
@@ -326,10 +348,10 @@ local function amalgamate( ... )
   -- is processed.
   for m,t in pairs( modules ) do
     -- Only Lua modules are handled for now, so modules that are
-    -- definitely C modules are skipped.
+    -- definitely C modules are skipped and handled later.
     if t ~= "C" then
       local path, msg  = searchpath( m, package.path )
-      if not path and t == "L" then
+      if not path and (t == "L" or not cmods) then
         -- The module is supposed to be a Lua module, but it cannot
         -- be found, so an error is raised.
         error( "module `"..m.."' not found:"..msg )
@@ -373,6 +395,101 @@ local function amalgamate( ... )
     end
   end
 
+  -- If the `-x` command line flag is active, C modules are embedded
+  -- as strings, and written out to temporary files on demand by the
+  -- amalgamated code.
+  if cmods then
+    local nfuncs = {}
+    local prefix = [=[
+local dirsep = package.config:match( "^([^\n]+)" )
+local tmpdir
+if dirsep == "\\" then
+  tmpdir = assert( os.getenv( "TMP" ),
+                   "could not detect temp directory" )
+end
+local function newdllname()
+  local tmpname = assert( os.tmpname() )
+  if dirsep == "\\" then
+    local first = tmpname:sub( 1, 1 )
+    local hassep = first == "\\" or first == "/"
+    tmpname = tmpdir..((hassep) and "" or "\\")..tmpname
+  end
+  return tmpname
+end
+local dllnames = {}
+
+]=]
+    for m,t in pairs( modules ) do
+      if t == "C" then
+        -- Try a search strategy similar to the standard C module
+        -- searcher first and then the all-in-one strategy.
+        local path, msg  = searchpath( m, package.cpath )
+        if not path then
+          errors[ m ] = (errors[ m ] or "") .. msg
+          path, msg = searchpath( m:gsub( "%..*$", "" ), package.cpath )
+          if not path then
+            error( "module `"..m.."' not found:"..errors[ m ]..msg )
+          end
+        end
+        local qpath = ("%q"):format( path )
+        -- Build the symbol(s) to look for in the dynamic library.
+        -- There may be multiple candidates because of optional
+        -- version information in the module names and the different
+        -- approaches of the different Lua versions in handling that.
+        local openf = m:gsub( "%.", "_" )
+        local openf1, openf2 = openf:match( "^([^%-]*)%-(.*)$" )
+        -- The amalgamation of C modules is split into two parts:
+        -- One part generates a temporary file name for the C library
+        -- and writes the binary code stored in the amalgamation to
+        -- that file, while the second loads the resulting dynamic
+        -- library using `package.loadlib`. The split is necessary
+        -- because multiple modules could be loaded from the same
+        -- library, and the amalgamated code has to simulate that.
+        -- Shared dynamic libraries are embedded only once.
+        --
+        -- The temporary dynamic library files are not cleaned up at
+        -- the moment, because this cleanup would have to happen
+        -- before the libraries are unloaded (at least on Lua 5.2+),
+        -- and this probably won't work on Windows.
+        if not nfuncs[ path ] then
+          local code = readfile( path, true )
+          nfuncs[ path ] = true
+          out:write( prefix, "dllnames[ ", qpath, [=[ ] = function()
+  local dll = newdllname()
+  local f = assert( io.open( dll, "wb" ) )
+  f:write( ]=], ("%q"):format( code ), [=[ )
+  f:close()
+  dllnames[ ]=], qpath, [=[ ] = function() return dll end
+  return dll
+end
+
+]=] )
+          prefix = ""
+        end -- shared libary not embedded already
+        -- Add a function to `package.preload` to load the temporary
+        -- DLL or shared object file. This function tries to mimic the
+        -- behavior of Lua 5.3 which is to strip version information
+        -- from the module name at the end first, and then at the
+        -- beginning if that failed.
+        local qm = ("%q"):format( m )
+        out:write( "package.preload[ ", qm, " ] = function()\n",
+                   "  local dll = dllnames[ ", qpath, " ]()\n" )
+        if openf1 then
+          out:write( "  local loader = package.loadlib( dll, ",
+                     ("%q"):format( "luaopen_"..openf1 ), " )\n",
+                     "  if not loader then\n",
+                     "    loader = assert( package.loadlib( dll, ",
+                     ("%q"):format( "luaopen_"..openf2 ),
+                     " ) )\n  end\n" )
+        else
+          out:write( "  local loader = assert( package.loadlib( dll, ",
+                     ("%q"):format( "luaopen_"..openf ), " ) )\n" )
+        end
+        out:write( "  return loader( ", qm, ", dll )\nend\n\n" )
+      end -- is a C module
+    end -- for all given module names
+  end -- if cmods
+
   -- If a main script is specified on the command line (`-s` flag),
   -- embed it now that all dependent modules are available to
   -- `require`.
@@ -395,14 +512,14 @@ end
 
 
 -- If `amalg.lua` is loaded as a module, it intercepts `require` calls
--- (more specifically calls to the Lua searcher) to collect all
+-- (more specifically calls to the searcher functions) to collect all
 -- `require`d module names and store them in the cache. The cache file
 -- `amalg.cache` is updated when the program terminates.
 local function collect()
   local searchers = package.searchers or package.loaders
   -- When the searchers table has been modified, it is unknown which
-  -- element in the table the Lua searcher is, so `amalg.lua` bails
-  -- out with an error.
+  -- elements in the table to replace, so `amalg.lua` bails out with
+  -- an error.
   assert( #searchers == 4, "package.searchers has been modified" )
   local c = readcache() or {}
   -- The updated cache is written to disk when the following value is
@@ -421,8 +538,8 @@ local function collect()
     return ...
   end
 
-  -- The replacement searchers just forward to the original version,
-  -- but also updates the cache if the search was successful.
+  -- The replacement searchers just forward to the original versions,
+  -- but also update the cache if the search was successful.
   searchers[ 2 ] = function( ... )
     local _ = sentinel -- make sure that sentinel is an upvalue
     return rv_handler( "L", ..., lua_searcher( ... ) )
@@ -467,8 +584,9 @@ local function is_script()
 end
 
 
--- Check whether `amalg.lua` has been called as a script or loaded as
--- a module and act accordingly:
+-- This checks whether `amalg.lua` has been called as a script or
+-- loaded as a module and acts accordingly, by calling the
+-- corresponding main function:
 if is_script() then
   amalgamate( ... )
 else

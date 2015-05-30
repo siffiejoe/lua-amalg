@@ -13,19 +13,20 @@ Features:
     the deprecated `module` function).
 *   You don't have to take care of the order in which the modules are
     `require`'d.
-*   Can collect `require`'d Lua modules automatically.
+*   Can embed compiled C modules.
+*   Can collect `require`'d Lua (and C) modules automatically.
 
 What it doesn't do:
 
 *   It does not compile to bytecode. Use `luac` for that yourself, or
     take a look at [squish][1], or [luac.lua][4].
-*   It does not include C modules.
 *   It doesn't do static analysis of Lua code to collect `require`'d
     modules. That won't work reliably anyway. You can write your own
     program for that (using the output of `luac -p -l`), or use
     [squish][1], or [soar][3] instead.
 *   It will not compress, minify, obfuscate your Lua source code, or
     any of the other things [squish][1] can do.
+*   It doesn't handle the possible dependencies of C modules.
 
 There are alternatives to this program: See [squish][1], [LOOP][2],
 [soar][3], [luac.lua][4], and [bundle.lua][5] (and probably some
@@ -67,7 +68,7 @@ slightly more memory, however.
 
     ./amalg.lua -o out.lua -d -s main.lua module1 module2
 
-To collect all Lua modules used by a program, you can load the
+To collect all Lua (and C) modules used by a program, you can load the
 `amalg.lua` script as a module, and it will intercept calls to
 `require` and save the necessary Lua module names in a file
 `amalg.cache` in the current directory.
@@ -81,6 +82,14 @@ You can use the cache (in addition to all module names given on the
 commandline) using the `-c` flag.
 
     ./amalg.lua -o out.lua -s main.lua -c
+
+However, this will only embed the Lua modules. To also embed C modules
+(both from the cache and from the command line), you have to specify
+the `-x` flag:
+
+    ./amalg.lua -o out.lua -s main.lua -c -x
+
+This will make the amalgamated script platform-dependent, obviously!
 
 To fix a compatibility issue with Lua 5.1's vararg handling,
 `amalg.lua` by default adds a local alias to the global `arg` table to

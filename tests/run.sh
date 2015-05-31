@@ -1,5 +1,4 @@
 #!/bin/bash -e
-set -e
 
 LUAV=5.1
 #LUAV=5.2
@@ -17,24 +16,24 @@ echo "Using Lua $LUAV ..."
 luac$LUAV -o module1.luac module1.lua
 luac$LUAV -o module2.luac module2.lua
 
-lua$LUAV ../src/amalg.lua -o modules.lua module1 module2
 echo -n "amalgamate modules only ... "
+lua$LUAV ../src/amalg.lua -o modules.lua module1 module2
 lua$LUAV -l modules main.lua
 
-lua$LUAV ../src/amalg.lua -o textout.lua -s main.lua module1 module2
 echo -n "amalgamate modules and script in text form ... "
+lua$LUAV ../src/amalg.lua -o textout.lua -s main.lua module1 module2
 lua$LUAV textout.lua
 
-lua$LUAV -e 'package.path = "./?.luac;"..package.path' ../src/amalg.lua -o binout.lua -s main.lua module1 module2
 echo -n "amalgamate modules and script in binary form ... "
+lua$LUAV -e 'package.path = "./?.luac;"..package.path' ../src/amalg.lua -o binout.lua -s main.lua module1 module2
 lua$LUAV binout.lua
 
-lua$LUAV ../src/amalg.lua -o afixout.lua -a -s main.lua module1 module2
 echo -n "amalgamate modules and script without arg fix ... "
+lua$LUAV ../src/amalg.lua -o afixout.lua -a -s main.lua module1 module2
 lua$LUAV afixout.lua
 
-lua$LUAV ../src/amalg.lua -o debugout.lua -d -s main.lua module1 module2
 echo -n "amalgamate modules and script with debug info ... "
+lua$LUAV ../src/amalg.lua -o debugout.lua -d -s main.lua module1 module2
 lua$LUAV debugout.lua
 
 echo -n "collect module names using amalg.lua as a module ... "

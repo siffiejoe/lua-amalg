@@ -1,8 +1,9 @@
 #!/bin/bash -e
 
-LUAV=5.1
-#LUAV=5.2
-#LUAV=5.3
+LUAV=$1
+if [ x"$1" != x5.1 -a x"$1" != x5.2 -a x"$1" != x5.3 ]; then
+  LUAV=5.1
+fi
 
 INC=/usr/include/lua$LUAV
 if [ ! -d "$INC" ]; then

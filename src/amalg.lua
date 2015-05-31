@@ -422,23 +422,25 @@ local newproxy = newproxy
 local getmetatable = assert( getmetatable )
 local setmetatable = assert( setmetatable )
 local os_tmpname = assert( os.tmpname )
+local os_getenv = assert( os.getenv )
 local os_remove = assert( os.remove )
 local io_open = assert( io.open )
+local string_match = assert( string.match )
 local string_sub = assert( string.sub )
 local package_loadlib = assert( package.loadlib )
 
 local dirsep = package.config:match( "^([^\n]+)" )
 local tmpdir
-if dirsep == "\\" then
-  tmpdir = assert( os.getenv( "TMP" ),
-                   "could not detect temp directory" )
-end
 local function newdllname()
   local tmpname = assert( os_tmpname() )
   if dirsep == "\\" then
-    local first = string_sub( tmpname, 1, 1 )
-    local hassep = first == "\\" or first == "/"
-    tmpname = tmpdir..((hassep) and "" or "\\")..tmpname
+    if not string_match( tmpname, "[\\/][^\\/]+[\\/]" ) then
+      tmpdir = tmpdir or assert( os_getenv( "TMP" ),
+                                 "could not detect temp directory" )
+      local first = string_sub( tmpname, 1, 1 )
+      local hassep = first == "\\" or first == "/"
+      tmpname = tmpdir..((hassep) and "" or "\\")..tmpname
+    end
   end
   return tmpname
 end

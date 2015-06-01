@@ -2,10 +2,15 @@
 
 set LR4WIN=C:\LR4Win
 
-call :runtest 51
-::call :runtest 52
-::call :runtest 53
-
+if [%1]==[51] (
+  call :runtest 51
+) else if [%1]==[52] (
+  call :runtest 52
+) else if [%1]==[53] (
+  call :runtest 53
+) else (
+  call :runtest 51
+)
 goto :eof
 
 :R

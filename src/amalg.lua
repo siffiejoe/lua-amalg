@@ -17,7 +17,7 @@
 -- *   It does not compile to bytecode. Use `luac` for that yourself,
 --     or take a look at [squish][1], or [luac.lua][4].
 -- *   It doesn't do static analysis of Lua code to collect `require`d
---     modules. That won't work reliable anyway in a dynamic language!
+--     modules. That won't work reliably anyway in a dynamic language!
 --     You can write your own program for that (e.g. using the output
 --     of `luac -p -l`), or use [squish][1], or [soar][3] instead.
 -- *   It will not compress, minify, obfuscate your Lua source code,
@@ -416,6 +416,15 @@ local function amalgamate( ... )
   -- amalgamated code.
   if cmods then
     local nfuncs = {}
+    -- To make the loading of C modules more robust, the necessary
+    -- global functions are saved in upvalues (because user-supplied
+    -- code might be run before a C module is loaded). The upvalues
+    -- are local to a `do ... end` block, so they aren't visible in
+    -- the main script code.
+    --
+    -- On Windows the result of `os.tmpname()` is not an absolute
+    -- path by default. If that's the case the value of the `TMP`
+    -- environment variable is prepended to make it absolute.
     local prefix = [=[
 local assert = assert
 local newproxy = newproxy
@@ -479,7 +488,13 @@ local dllnames = {}
         -- The temporary dynamic library files may or may not be
         -- cleaned up when the amalgamated code exits (this probably
         -- works on POSIX machines (all Lua versions) and on Windows
-        -- with Lua 5.1).
+        -- with Lua 5.1). The reason is that starting with version 5.2
+        -- Lua ensures that libraries aren't unloaded before normal
+        -- user-supplied `__gc` metamethods have run to avoid a case
+        -- where such a metamethod would call an unloaded C function.
+        -- As a consequence the amalgamated code tries to remove the
+        -- temporary library files *before* they are actually
+        -- unloaded.
         if not nfuncs[ path ] then
           local code = readfile( path, true )
           nfuncs[ path ] = true

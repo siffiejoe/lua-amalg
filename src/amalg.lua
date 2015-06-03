@@ -570,17 +570,21 @@ local function collect()
   local searchers = package.searchers or package.loaders
   -- When the searchers table has been modified, it is unknown which
   -- elements in the table to replace, so `amalg.lua` bails out with
-  -- an error.
-  assert( #searchers == 4, "package.searchers has been modified" )
+  -- an error. The `luarocks.loader` module which inserts itself at
+  -- position 1 in the `package.searchers` table is explicitly
+  -- supported, though!
+  local off = 0
+  if package.loaded[ "luarocks.loader" ] then off = 1 end
+  assert( #searchers == 4+off, "package.searchers has been modified" )
   local c = readcache() or {}
   -- The updated cache is written to disk when the following value is
   -- garbage collected, which should happen at `lua_close()`.
   local sentinel = newproxy and newproxy( true )
                             or setmetatable( {}, { __gc = true } )
   getmetatable( sentinel ).__gc = function() writecache( c ) end
-  local lua_searcher = searchers[ 2 ]
-  local c_searcher = searchers[ 3 ]
-  local aio_searcher = searchers[ 4 ] -- all in one searcher
+  local lua_searcher = searchers[ 2+off ]
+  local c_searcher = searchers[ 3+off ]
+  local aio_searcher = searchers[ 4+off ] -- all in one searcher
 
   local function rv_handler( tag, mname, ... )
     if type( (...) ) == "function" then
@@ -591,15 +595,15 @@ local function collect()
 
   -- The replacement searchers just forward to the original versions,
   -- but also update the cache if the search was successful.
-  searchers[ 2 ] = function( ... )
+  searchers[ 2+off ] = function( ... )
     local _ = sentinel -- make sure that sentinel is an upvalue
     return rv_handler( "L", ..., lua_searcher( ... ) )
   end
-  searchers[ 3 ] = function( ... )
+  searchers[ 3+off ] = function( ... )
     local _ = sentinel -- make sure that sentinel is an upvalue
     return rv_handler( "C", ..., c_searcher( ... ) )
   end
-  searchers[ 4 ] = function( ... )
+  searchers[ 4+off ] = function( ... )
     local _ = sentinel -- make sure that sentinel is an upvalue
     return rv_handler( "C", ..., aio_searcher( ... ) )
   end

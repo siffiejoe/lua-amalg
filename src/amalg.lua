@@ -360,9 +360,18 @@ local function amalgamate( ... )
     out:write( "#!/usr/bin/env lua\n\ndo\n\n" )
   end
 
+  -- Sort modules alphabetically. Modules will be embedded in
+  -- alphabetical order. This ensures deterministic output.
+  local module_names = {}
+  for m in pairs(modules) do
+    table.insert(module_names, m)
+  end
+  table.sort(module_names)
+
   -- Every module given on the command line and/or in the cache file
   -- is processed.
-  for m,t in pairs( modules ) do
+  for _,m in ipairs( module_names ) do
+    local t = modules[m]
     -- Only Lua modules are handled for now, so modules that are
     -- definitely C modules are skipped and handled later.
     if t ~= "C" then
@@ -456,7 +465,8 @@ end
 local dllnames = {}
 
 ]=]
-    for m,t in pairs( modules ) do
+    for _,m in ipairs( module_names ) do
+      local t = modules[m]
       if t == "C" then
         -- Try a search strategy similar to the standard C module
         -- searcher first and then the all-in-one strategy to locate

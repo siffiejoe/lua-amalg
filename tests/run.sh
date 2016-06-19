@@ -6,9 +6,6 @@ if [ x"$1" != x5.1 -a x"$1" != x5.2 -a x"$1" != x5.3 ]; then
 fi
 
 INC=/usr/include/lua$LUAV
-if [ ! -d "$INC" ]; then
-  INC=/home/siffiejoe/.self/programs/lua$LUAV
-fi
 
 gcc -Wall -Wextra -Os -fpic -I"$INC" -shared -o cmod.so cmod.c
 gcc -Wall -Wextra -Os -fpic -I"$INC" -shared -o aiomod.so aiomod.c

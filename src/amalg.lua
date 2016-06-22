@@ -453,7 +453,8 @@ local function newdllname()
   local tmpname = assert( os_tmpname() )
   if dirsep == "\\" then
     if not string_match( tmpname, "[\\/][^\\/]+[\\/]" ) then
-      tmpdir = tmpdir or assert( os_getenv( "TMP" ),
+      tmpdir = tmpdir or assert( os_getenv( "TMP" ) or
+                                 os_getenv( "TEMP" ),
                                  "could not detect temp directory" )
       local first = string_sub( tmpname, 1, 1 )
       local hassep = first == "\\" or first == "/"

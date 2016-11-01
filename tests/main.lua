@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/lua5.3
 
 local module1 = require( "module1" )
 local module2 = require( "module2" )

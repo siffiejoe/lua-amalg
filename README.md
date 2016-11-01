@@ -91,6 +91,15 @@ the `-x` flag:
 
 This will make the amalgamated script platform-dependent, obviously!
 
+In some cases you may want to ignore automatically listed modules in
+the cache without editing the cache file. Use the `-i` option for that
+and specify a Lua pattern:
+
+    ./amalg.lua -o out.lua -s main.lua -c -i "^luarocks%."
+
+The `-i` option can be used multiple times to specify multiple
+patterns.
+
 To fix a compatibility issue with Lua 5.1's vararg handling,
 `amalg.lua` by default adds a local alias to the global `arg` table to
 every loaded module. If for some reason you don't want that, use the
@@ -120,7 +129,7 @@ Comments and feedback are always welcome.
 `amalg` is *copyrighted free software* distributed under the MIT
 license (the same license as Lua 5.1). The full license text follows:
 
-    amalg (c) 2013-2015 Philipp Janda
+    amalg (c) 2013-2016 Philipp Janda
 
     Permission is hereby granted, free of charge, to any person obtaining
     a copy of this software and associated documentation files (the

@@ -44,7 +44,11 @@ echo -n "amalgamate Lua modules, Lua script and C modules ... "
 lua$LUAV ../src/amalg.lua -o cmodout.lua -s main.lua -c -x
 lua$LUAV -e 'package.cpath = ""' cmodout.lua
 
+echo -n "amalgamate Lua modules, but ignore C modules ... "
+lua$LUAV ../src/amalg.lua -o ignout.lua -s main.lua -c -x -i '^cmod' -i '^aiomod'
+lua$LUAV ignout.lua
+
 exit 0
 
-rm -f module1.luac module2.luac modules.lua textout.lua binout.lua afixout.lua debugout.lua cacheout.lua cmodout.lua amalg.cache cmod.so aiomod.so
+rm -f module1.luac module2.luac modules.lua textout.lua binout.lua afixout.lua debugout.lua cacheout.lua cmodout.lua ignout.lua amalg.cache cmod.so aiomod.so
 

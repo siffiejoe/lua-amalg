@@ -81,7 +81,7 @@ if errorlevel 1 goto :eof
 
 echo amalgamate Lua modules, but ignore C modules ... "
 %_lua% ..\src\amalg.lua -o cmodout.lua -s main.lua -c -x -i ^^cmod -i ^^aimod
-%_lua% -e package.cpath='' cmodout.lua
+%_lua% cmodout.lua
 if errorlevel 1 goto :eof
 
 endlocal

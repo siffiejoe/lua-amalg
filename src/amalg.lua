@@ -395,17 +395,18 @@ local function amalgamate( ... )
     out = assert( io.open( oname, "w" ) )
   end
 
-  -- If a main script is to be embedded, this includes a shebang line
-  -- so that the resulting amalgamation can be run without explicitly
-  -- specifying the interpreter on unixoid systems.
+  -- If a main script is to be embedded, this includes the same
+  -- shebang line that was used in the main script, so that the
+  -- resulting amalgamation can be run without explicitly
+  -- specifying the interpreter on unixoid systems (if a shebang
+  -- line was specified in the first place, that is).
   local script_bytes, script_binary, shebang
   if script then
     script_bytes, script_binary, shebang = readluafile( script )
     if shebang then
-      out:write( shebang, "\n\ndo\n\n" )
-    else
-      out:write( "#!/usr/bin/env lua\n\ndo\n\n" )
+      out:write( shebang, "\n\n" )
     end
+    out:write( "do\n\n" )
   end
 
   -- Sort modules alphabetically. Modules will be embedded in

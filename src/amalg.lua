@@ -418,6 +418,15 @@ local function amalgamate( ... )
     out:write( "do\n\n" )
   end
 
+  -- Option -z: if module exists besides the amalgamed version,
+  -- load it; package.preload wont be used then.
+  if load_late then
+    out:write( [[
+      local searchers = package.searchers or package.loaders
+      table.insert(searchers, 1, searchers[2])
+      table.insert(searchers, 2, searchers[3+1])
+    ]] )
+  end
   -- Sort modules alphabetically. Modules will be embedded in
   -- alphabetical order. This ensures deterministic output.
   local module_names = {}
@@ -445,11 +454,6 @@ local function amalgamate( ... )
         modules[ m ], errors[ m ] = "C", msg
       else
         local bytes, is_bin = readluafile( path )
-        -- Option -z: if module exists besides the amalgamed version,
-        -- load it; package.preload wont be used then.
-        if load_late then
-          out:write( "pcall(require,", qformat( m ),")\n" )
-        end
         if is_bin or dbg then
           -- Precompiled Lua modules are loaded via the standard Lua
           -- function `load` (or `loadstring` in Lua 5.1). Since this

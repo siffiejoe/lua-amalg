@@ -109,6 +109,13 @@ table as `_G.arg`).
 
     ./amalg.lua -o out.lua -a -s main.lua -c
 
+To enable late/lazy loading of amalgated code, specify the -z flag.
+This will try to traditionally require() the modules, and
+only in case of failure it will load the amalgated version.
+This is primarily used to deploy customized versions of
+some of your modules, and have a default amalgated base
+installation of your project.
+
 That's it. For further info consult the source (there's a nice
 [annotated HTML file][6] rendered with [Docco][7] on the GitHub
 pages). Have fun!

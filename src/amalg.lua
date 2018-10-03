@@ -120,9 +120,9 @@
 --
 --     ./amalg.lua -o out.lua -a -s main.lua -c
 --
--- To enable late loading of amalated code, specify the -z flag. 
+-- To enable late/lazy loading of amalgated code, specify the -z flag.
 -- This will try to traditionally require() the modules, and
--- only in case of failure it will load the amalated version.
+-- only in case of failure it will load the amalgated version.
 -- This is primarily used to deploy customized versions of
 -- some of your modules, and have a default amalgated base
 -- installation of your project.
@@ -172,7 +172,7 @@ end
 -- command line (e.g. duplicate options) a warning is printed to the
 -- console.
 local function parse_cmdline( ... )
-  local modules, afix, ignores, use_cache, cmods, dbg, script, oname =
+  local modules, afix, ignores, use_cache, cmods, dbg, script, oname, load_late =
         {}, true, {}
 
   local function set_oname( v )
@@ -234,6 +234,8 @@ local function parse_cmdline( ... )
       dbg = true
     elseif a == "-a" then
       afix = false
+    elseif a == "-z" then
+      load_late = true
     else
       local prefix = a:sub( 1, 2 )
       if prefix == "-o" then
@@ -250,7 +252,7 @@ local function parse_cmdline( ... )
     end
     i = i + 1
   end
-  return oname, script, dbg, afix, use_cache, ignores, cmods, modules
+  return oname, script, dbg, afix, use_cache, ignores, cmods, modules, load_late
 end
 
 
@@ -374,7 +376,7 @@ end
 -- collects the module and script sources, and writes the amalgamated
 -- source.
 local function amalgamate( ... )
-  local oname, script, dbg, afix, use_cache, ignores, cmods, modules =
+  local oname, script, dbg, afix, use_cache, ignores, cmods, modules,load_late =
         parse_cmdline( ... )
   local errors = {}
 
@@ -443,6 +445,11 @@ local function amalgamate( ... )
         modules[ m ], errors[ m ] = "C", msg
       else
         local bytes, is_bin = readluafile( path )
+        -- Option -z: if module exists besides the amalgamed version,
+        -- load it; package.preload wont be used then.
+        if load_late then
+          out:write( "pcall(require,", qformat( m ),")\n" )
+        end
         if is_bin or dbg then
           -- Precompiled Lua modules are loaded via the standard Lua
           -- function `load` (or `loadstring` in Lua 5.1). Since this

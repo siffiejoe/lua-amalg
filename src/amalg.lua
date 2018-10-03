@@ -120,6 +120,13 @@
 --
 --     ./amalg.lua -o out.lua -a -s main.lua -c
 --
+-- To enable late loading of amalated code, specify the -z flag. 
+-- This will try to traditionally require() the modules, and
+-- only in case of failure it will load the amalated version.
+-- This is primarily used to deploy customized versions of
+-- some of your modules, and have a default amalgated base
+-- installation of your project.
+--
 -- That's it. For further info consult the source.
 --
 --

@@ -100,6 +100,18 @@ and specify a Lua pattern:
 The `-i` option can be used multiple times to specify multiple
 patterns.
 
+Usually, the amalgamated modules take precedence over locally
+installed (possibly newer) versions of the same modules. If you want
+to use local modules when available and only fall back to the
+amalgamated code otherwise, you can specify the `-f` flag.
+
+    ./amalg.lua -o out.lua -s main.lua -c -f
+
+This installs another searcher/loader function at the end of the
+`package.searchers` (or `package.loaders` on Lua 5.1) and adds a new
+table `package.postload` that serves the same purpose as the standard
+`package.preload` table.
+
 To fix a compatibility issue with Lua 5.1's vararg handling,
 `amalg.lua` by default adds a local alias to the global `arg` table to
 every loaded module. If for some reason you don't want that, use the
@@ -129,7 +141,7 @@ Comments and feedback are always welcome.
 `amalg` is *copyrighted free software* distributed under the MIT
 license (the same license as Lua 5.1). The full license text follows:
 
-    amalg (c) 2013-2016 Philipp Janda
+    amalg (c) 2013-2018 Philipp Janda
 
     Permission is hereby granted, free of charge, to any person obtaining
     a copy of this software and associated documentation files (the

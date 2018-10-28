@@ -111,6 +111,18 @@
 -- The `-i` option can be used multiple times to specify multiple
 -- patterns.
 --
+-- Usually, the amalgamated modules take precedence over locally
+-- installed (possibly newer) versions of the same modules. If you
+-- want to use local modules when available and only fall back to the
+-- amalgamated code otherwise, you can specify the `-f` flag.
+--
+--     ./amalg.lua -o out.lua -s main.lua -c -f
+--
+-- This installs another searcher/loader function at the end of
+-- `package.searchers` (or `package.loaders` on Lua 5.1) and adds
+-- a new table `package.postload` that serves the same purpose as the
+-- standard `package.preload` table.
+--
 -- To fix a compatibility issue with Lua 5.1's vararg handling,
 -- `amalg.lua` by default adds a local alias to the global `arg` table
 -- to every loaded module. If for some reason you don't want that, use
@@ -165,8 +177,8 @@ end
 -- command line (e.g. duplicate options) a warning is printed to the
 -- console.
 local function parse_cmdline( ... )
-  local modules, afix, ignores, use_cache, cmods, dbg, script, oname =
-        {}, true, {}
+  local modules, afix, ignores, tname, use_cache, cmods, dbg, script, oname =
+        {}, true, {}, "preload"
 
   local function set_oname( v )
     if v then
@@ -219,6 +231,8 @@ local function parse_cmdline( ... )
     elseif a == "-i" then
       i = i + 1
       add_ignore( i <= n and select( i, ... ) )
+    elseif a == "-f" then
+      tname = "postload"
     elseif a == "-c" then
       use_cache = true
     elseif a == "-x" then
@@ -243,7 +257,7 @@ local function parse_cmdline( ... )
     end
     i = i + 1
   end
-  return oname, script, dbg, afix, use_cache, ignores, cmods, modules
+  return oname, script, dbg, afix, use_cache, tname, ignores, cmods, modules
 end
 
 
@@ -367,7 +381,7 @@ end
 -- collects the module and script sources, and writes the amalgamated
 -- source.
 local function amalgamate( ... )
-  local oname, script, dbg, afix, use_cache, ignores, cmods, modules =
+  local oname, script, dbg, afix, use_cache, tname, ignores, cmods, modules =
         parse_cmdline( ... )
   local errors = {}
 
@@ -409,6 +423,32 @@ local function amalgamate( ... )
     out:write( "do\n\n" )
   end
 
+  -- If fallback loading is requested, the module loaders of the
+  -- amalgamated module are registered in table `package.postload`,
+  -- and an extra searcher function is added at the end of
+  -- `package.searchers`.
+  if tname == "postload" then
+    out:write([=[
+do
+  local assert = assert
+  local type = assert( type )
+  local searchers = package.searchers or package.loaders
+  local postload = {}
+  package.postload = postload
+  searchers[ #searchers+1 ] = function( mod )
+    assert( type( mod ) == "string", "module name must be a string" )
+    local loader = postload[ mod ]
+    if loader == nil then
+      return "\n\tno field package.postload['"..mod.."']"
+    else
+      return loader
+    end
+  end
+end
+
+]=] )
+  end
+
   -- Sort modules alphabetically. Modules will be embedded in
   -- alphabetical order. This ensures deterministic output.
   local module_names = {}
@@ -442,7 +482,7 @@ local function amalgamate( ... )
           -- preserves file name and line number information, this
           -- approach is used for all files if the debug mode is active
           -- (`-d` command line option).
-          out:write( "package.preload[ ", qformat( m ),
+          out:write( "package.", tname, "[ ", qformat( m ),
                      " ] = assert( (loadstring or load)(\n",
                      qformat( bytes ), "\n, '@'..",
                      qformat( path ), " ) )\n\n" )
@@ -460,7 +500,7 @@ local function amalgamate( ... )
           -- `amalg.lua` adds a local alias to the global `arg` table
           -- unless the `-a` command line flag is specified.
           out:write( "do\nlocal _ENV = _ENV\n",
-                     "package.preload[ ", qformat( m ),
+                     "package.", tname, "[ ", qformat( m ),
                      " ] = function( ... ) ",
                      afix and "local arg = _G.arg;\n" or "_ENV = _ENV;\n",
                      bytes, "\nend\nend\n\n" )
@@ -583,7 +623,7 @@ end
         -- from the module name at the end first, and then at the
         -- beginning if that failed.
         local qm = qformat( m )
-        out:write( "package.preload[ ", qm, " ] = function()\n",
+        out:write( "package.", tname, "[ ", qm, " ] = function()\n",
                    "  local dll = dllnames[ ", qpath, " ]()\n" )
         if openf1 then
           out:write( "  local loader = package_loadlib( dll, ",

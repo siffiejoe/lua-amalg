@@ -47,6 +47,14 @@ echo amalgamate modules only ...
 %_lua% -l modules main.lua
 if errorlevel 1 goto :eof
 
+echo amalgamate modules as fallbacks[1] ...
+%_lua% ..\src\amalg.lua -f -o fallbacks.lua module1 module2
+%_lua% -l fallbacks main.lua
+if errorlevel 1 goto :eof
+echo amalgamate modules as fallbacks[2] ...
+%_lua% -l fallbacks -e "package.path=''" main.lua
+if errorlevel 1 goto :eof
+
 echo amalgamate modules and script in text form ...
 %_lua% ..\src\amalg.lua -o textout.lua -s main.lua module1 module2
 %_lua% textout.lua

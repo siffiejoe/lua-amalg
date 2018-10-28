@@ -18,6 +18,12 @@ echo -n "amalgamate modules only ... "
 lua$LUAV ../src/amalg.lua -o modules.lua module1 module2
 lua$LUAV -l modules main.lua
 
+echo -n "amalgamate modules as fallbacks(1) ... "
+lua$LUAV ../src/amalg.lua -f -o fallbacks.lua module1 module2
+lua$LUAV -l fallbacks main.lua
+echo -n "amalgamate modules as fallbacks(2) ... "
+lua$LUAV -l fallbacks -e "package.path=''" main.lua
+
 echo -n "amalgamate modules and script in text form ... "
 lua$LUAV ../src/amalg.lua -o textout.lua -s main.lua module1 module2
 lua$LUAV textout.lua
@@ -50,5 +56,5 @@ lua$LUAV ignout.lua
 
 exit 0
 
-rm -f module1.luac module2.luac modules.lua textout.lua binout.lua afixout.lua debugout.lua cacheout.lua cmodout.lua ignout.lua amalg.cache cmod.so aiomod.so
+rm -f module1.luac module2.luac modules.lua fallbacks.lua textout.lua binout.lua afixout.lua debugout.lua cacheout.lua cmodout.lua ignout.lua amalg.cache cmod.so aiomod.so
 

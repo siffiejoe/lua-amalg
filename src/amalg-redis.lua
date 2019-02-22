@@ -275,12 +275,7 @@ local function amalgamate( ... )
     out = assert( io.open( oname, "w" ) )
   end
 
-  -- If a main script is to be embedded, this includes the same
-  -- shebang line that was used in the main script, so that the
-  -- resulting amalgamation can be run without explicitly
-  -- specifying the interpreter on unixoid systems (if a shebang
-  -- line was specified in the first place, that is).
-  local script_bytes, script_binary, shebang
+  local script_bytes, script_binary
   if script then
     script_bytes, script_binary, _ = readluafile( script )
   end

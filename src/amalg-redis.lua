@@ -40,7 +40,6 @@ end
 --     given pattern (can be given multiple times)
 -- *   `-d`: enable debug mode (file names and line numbers in error
 --     messages will point to the original location)
--- *   `-x`: also embed compiled C modules
 -- *   `--`: stop parsing command line flags (all remaining arguments
 --     are considered module names)
 --
@@ -48,7 +47,7 @@ end
 -- command line (e.g. duplicate options) a warning is printed to the
 -- console.
 local function parse_cmdline( ... )
-  local modules, ignores, tname, use_cache, cmods, dbg, script, oname =
+  local modules, ignores, tname, use_cache, dbg, script, oname =
         {}, {}, "preload"
 
   local function set_oname( v )
@@ -106,8 +105,6 @@ local function parse_cmdline( ... )
       tname = "postload"
     elseif a == "-c" then
       use_cache = true
-    elseif a == "-x" then
-      cmods = true
     elseif a == "-d" then
       dbg = true
     else
@@ -126,7 +123,7 @@ local function parse_cmdline( ... )
     end
     i = i + 1
   end
-  return oname, script, dbg, use_cache, tname, ignores, cmods, modules
+  return oname, script, dbg, use_cache, tname, ignores, modules
 end
 
 
@@ -250,7 +247,7 @@ end
 -- collects the module and script sources, and writes the amalgamated
 -- source.
 local function amalgamate( ... )
-  local oname, script, dbg, use_cache, tname, ignores, cmods, modules =
+  local oname, script, dbg, use_cache, tname, ignores, modules =
         parse_cmdline( ... )
   local errors = {}
 
@@ -289,7 +286,6 @@ local function amalgamate( ... )
     if shebang then
       out:write( shebang, "\n\n" )
     end
-    out:write( "do\n\n" )
   end
 
   -- If fallback loading is requested, the module loaders of the
@@ -334,7 +330,7 @@ end
     -- definitely C modules are skipped and handled later.
     if t ~= "C" then
       local path, msg  = searchpath( m, package.path )
-      if not path and (t == "L" or not cmods) then
+      if not path and (t == "L") then
         -- The module is supposed to be a Lua module, but it cannot
         -- be found, so an error is raised.
         error( "module `"..m.."' not found:"..msg )
@@ -368,143 +364,11 @@ end
     end
   end
 
-  -- If the `-x` command line flag is active, C modules are embedded
-  -- as strings, and written out to temporary files on demand by the
-  -- amalgamated code.
-  if cmods then
-    local nfuncs = {}
-    -- To make the loading of C modules more robust, the necessary
-    -- global functions are saved in upvalues (because user-supplied
-    -- code might be run before a C module is loaded). The upvalues
-    -- are local to a `do ... end` block, so they aren't visible in
-    -- the main script code.
-    --
-    -- On Windows the result of `os.tmpname()` is not an absolute
-    -- path by default. If that's the case the value of the `TMP`
-    -- environment variable is prepended to make it absolute.
-    local prefix = [=[
-local assert = assert
-local newproxy = newproxy
-local getmetatable = assert( getmetatable )
-local setmetatable = assert( setmetatable )
-local os_tmpname = assert( os.tmpname )
-local os_getenv = assert( os.getenv )
-local os_remove = assert( os.remove )
-local io_open = assert( io.open )
-local string_match = assert( string.match )
-local string_sub = assert( string.sub )
-local package_loadlib = assert( package.loadlib )
-
-local dirsep = package.config:match( "^([^\n]+)" )
-local tmpdir
-local function newdllname()
-  local tmpname = assert( os_tmpname() )
-  if dirsep == "\\" then
-    if not string_match( tmpname, "[\\/][^\\/]+[\\/]" ) then
-      tmpdir = tmpdir or assert( os_getenv( "TMP" ) or
-                                 os_getenv( "TEMP" ),
-                                 "could not detect temp directory" )
-      local first = string_sub( tmpname, 1, 1 )
-      local hassep = first == "\\" or first == "/"
-      tmpname = tmpdir..((hassep) and "" or "\\")..tmpname
-    end
-  end
-  return tmpname
-end
-local dllnames = {}
-
-]=]
-    for _,m in ipairs( module_names ) do
-      local t = modules[ m ]
-      if t == "C" then
-        -- Try a search strategy similar to the standard C module
-        -- searcher first and then the all-in-one strategy to locate
-        -- the library files for the C modules to embed.
-        local path, msg  = searchpath( m, package.cpath )
-        if not path then
-          errors[ m ] = (errors[ m ] or "") .. msg
-          path, msg = searchpath( m:gsub( "%..*$", "" ), package.cpath )
-          if not path then
-            error( "module `"..m.."' not found:"..errors[ m ]..msg )
-          end
-        end
-        local qpath = qformat( path )
-        -- Build the symbol(s) to look for in the dynamic library.
-        -- There may be multiple candidates because of optional
-        -- version information in the module names and the different
-        -- approaches of the different Lua versions in handling that.
-        local openf = m:gsub( "%.", "_" )
-        local openf1, openf2 = openf:match( "^([^%-]*)%-(.*)$" )
-        -- The amalgamation of C modules is split into two parts:
-        -- One part generates a temporary file name for the C library
-        -- and writes the binary code stored in the amalgamation to
-        -- that file, while the second loads the resulting dynamic
-        -- library using `package.loadlib`. The split is necessary
-        -- because multiple modules could be loaded from the same
-        -- library, and the amalgamated code has to simulate that.
-        -- Shared dynamic libraries are embedded only once.
-        --
-        -- The temporary dynamic library files may or may not be
-        -- cleaned up when the amalgamated code exits (this probably
-        -- works on POSIX machines (all Lua versions) and on Windows
-        -- with Lua 5.1). The reason is that starting with version 5.2
-        -- Lua ensures that libraries aren't unloaded before normal
-        -- user-supplied `__gc` metamethods have run to avoid a case
-        -- where such a metamethod would call an unloaded C function.
-        -- As a consequence the amalgamated code tries to remove the
-        -- temporary library files *before* they are actually
-        -- unloaded.
-        if not nfuncs[ path ] then
-          local code = readfile( path, true )
-          nfuncs[ path ] = true
-          local qcode = qformat( code )
-          out:write( prefix, "dllnames[ ", qpath, [=[ ] = function()
-  local dll = newdllname()
-  local f = assert( io_open( dll, "wb" ) )
-  f:write( ]=], qcode, [=[ )
-  f:close()
-  local sentinel = newproxy and newproxy( true )
-                            or setmetatable( {}, { __gc = true } )
-  getmetatable( sentinel ).__gc = function() os_remove( dll ) end
-  dllnames[ ]=], qpath, [=[ ] = function()
-    local _ = sentinel
-    return dll
-  end
-  return dll
-end
-
-]=] )
-          prefix = ""
-        end -- shared libary not embedded already
-        -- Add a function to `package.preload` to load the temporary
-        -- DLL or shared object file. This function tries to mimic the
-        -- behavior of Lua 5.3 which is to strip version information
-        -- from the module name at the end first, and then at the
-        -- beginning if that failed.
-        local qm = qformat( m )
-        out:write( "package.", tname, "[ ", qm, " ] = function()\n",
-                   "  local dll = dllnames[ ", qpath, " ]()\n" )
-        if openf1 then
-          out:write( "  local loader = package_loadlib( dll, ",
-                     qformat( "luaopen_"..openf1 ), " )\n",
-                     "  if not loader then\n",
-                     "    loader = assert( package_loadlib( dll, ",
-                     qformat( "luaopen_"..openf2 ),
-                     " ) )\n  end\n" )
-        else
-          out:write( "  local loader = assert( package_loadlib( dll, ",
-                     qformat( "luaopen_"..openf ), " ) )\n" )
-        end
-        out:write( "  return loader( ", qm, ", dll )\nend\n\n" )
-      end -- is a C module
-    end -- for all given module names
-  end -- if cmods
-
   -- If a main script is specified on the command line (`-s` flag),
   -- embed it now that all dependent modules are available to
   -- `require`.
   if script then
-    out:write( "end\n\n" )
+    out:write( "\n" )
     if script_binary or dbg then
       out:write( "assert( (loadstring or load)(\n",
                  qformat( script_bytes ), "\n, '@'..",

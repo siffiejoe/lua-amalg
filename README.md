@@ -57,14 +57,6 @@ commandline) using the `-c` flag.
 
 	$ amalg-redis -o out.lua -s main.lua -c
 
-However, this will only embed the Lua modules. To also embed C modules
-(both from the cache and from the command line), you have to specify
-the `-x` flag:
-
-	$ amalg-redis -o out.lua -s main.lua -c -x
-
-This will make the amalgamated script platform-dependent, obviously!
-
 In some cases you may want to ignore automatically listed modules in
 the cache without editing the cache file. Use the `-i` option for that
 and specify a Lua pattern:

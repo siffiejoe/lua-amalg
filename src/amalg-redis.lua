@@ -282,10 +282,7 @@ local function amalgamate( ... )
   -- line was specified in the first place, that is).
   local script_bytes, script_binary, shebang
   if script then
-    script_bytes, script_binary, shebang = readluafile( script )
-    if shebang then
-      out:write( shebang, "\n\n" )
-    end
+    script_bytes, script_binary, _ = readluafile( script )
   end
 
   -- If fallback loading is requested, the module loaders of the

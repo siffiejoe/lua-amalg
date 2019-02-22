@@ -26,8 +26,6 @@ end
 --     given pattern (can be given multiple times)
 -- *   `-d`: enable debug mode (file names and line numbers in error
 --     messages will point to the original location)
--- *   `-a`: do *not* apply the `arg` fix (local alias for the global
---     `arg` table)
 -- *   `-x`: also embed compiled C modules
 -- *   `--`: stop parsing command line flags (all remaining arguments
 --     are considered module names)
@@ -36,8 +34,8 @@ end
 -- command line (e.g. duplicate options) a warning is printed to the
 -- console.
 local function parse_cmdline( ... )
-  local modules, afix, ignores, tname, use_cache, cmods, dbg, script, oname =
-        {}, true, {}, "preload"
+  local modules, ignores, tname, use_cache, cmods, dbg, script, oname =
+        {}, {}, "preload"
 
   local function set_oname( v )
     if v then
@@ -98,8 +96,6 @@ local function parse_cmdline( ... )
       cmods = true
     elseif a == "-d" then
       dbg = true
-    elseif a == "-a" then
-      afix = false
     else
       local prefix = a:sub( 1, 2 )
       if prefix == "-o" then
@@ -116,7 +112,7 @@ local function parse_cmdline( ... )
     end
     i = i + 1
   end
-  return oname, script, dbg, afix, use_cache, tname, ignores, cmods, modules
+  return oname, script, dbg, use_cache, tname, ignores, cmods, modules
 end
 
 
@@ -240,7 +236,7 @@ end
 -- collects the module and script sources, and writes the amalgamated
 -- source.
 local function amalgamate( ... )
-  local oname, script, dbg, afix, use_cache, tname, ignores, cmods, modules =
+  local oname, script, dbg, use_cache, tname, ignores, cmods, modules =
         parse_cmdline( ... )
   local errors = {}
 
@@ -352,16 +348,10 @@ end
           -- function gets its own `_ENV` upvalue (on Lua 5.2+), and
           -- special care is taken that `_ENV` always is the first
           -- upvalue (important for the `module` function on Lua 5.2).
-          -- Lua 5.1 compiled with `LUA_COMPAT_VARARG` (the default) will
-          -- create a local `arg` variable to emulate the vararg handling
-          -- of Lua 5.0. This might interfere with Lua modules that access
-          -- command line arguments via the `arg` global. As a workaround
-          -- `amalg.lua` adds a local alias to the global `arg` table
-          -- unless the `-a` command line flag is specified.
           out:write( "do\nlocal _ENV = _ENV\n",
                      "package.", tname, "[ ", qformat( m ),
                      " ] = function( ... ) ",
-                     afix and "local arg = _G.arg;\n" or "_ENV = _ENV;\n",
+                     "_ENV = _ENV;\n",
                      bytes, "\nend\nend\n\n" )
         end
       end

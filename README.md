@@ -85,12 +85,3 @@ This installs another searcher/loader function at the end of the
 `package.searchers` (or `package.loaders` on Lua 5.1) and adds a new
 table `package.postload` that serves the same purpose as the standard
 `package.preload` table.
-
-To fix a compatibility issue with Lua 5.1's vararg handling,
-`amalg.lua` by default adds a local alias to the global `arg` table to
-every loaded module. If for some reason you don't want that, use the
-`-a` flag (but be aware that in Lua 5.1 with `LUA_COMPAT_VARARG`
-defined (the default) your modules can only access the global `arg`
-table as `_G.arg`).
-
-	$ amalg-redis -o out.lua -a -s main.lua -c

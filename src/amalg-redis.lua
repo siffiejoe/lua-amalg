@@ -344,15 +344,10 @@ end
         else
           -- Under normal circumstances Lua files are pasted into a
           -- new anonymous vararg function, which then is put into
-          -- `package.preload` so that `require` can find it. Each
-          -- function gets its own `_ENV` upvalue (on Lua 5.2+), and
-          -- special care is taken that `_ENV` always is the first
-          -- upvalue (important for the `module` function on Lua 5.2).
-          out:write( "do\nlocal _ENV = _ENV\n",
-                     "package.", tname, "[ ", qformat( m ),
-                     " ] = function( ... ) ",
-                     "_ENV = _ENV;\n",
-                     bytes, "\nend\nend\n\n" )
+          -- `package.preload` so that `require` can find it.
+          out:write( "package.", tname, "[ ", qformat( m ),
+                     " ] = function( ... )\n",
+                     bytes, "\nend\n\n" )
         end
       end
     end

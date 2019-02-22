@@ -4,6 +4,20 @@ local prog = "amalg.lua"
 local cache = "amalg.cache"
 
 
+local function indent(str, indentBy)
+  local lines = {}
+  for s in str:gmatch("[^\r\n]+") do
+    local line = ''
+    for i=1,indentBy*2 do
+      line = line .. ' '
+    end
+    line = line .. s
+    lines[#lines+1] = line
+  end
+  return table.concat(lines, '\n')
+end
+
+
 -- Wrong use of the command line may cause warnings to be printed to
 -- the console. This function is for printing those warnings:
 local function warn( ... )
@@ -347,7 +361,8 @@ end
           -- `package.preload` so that `require` can find it.
           out:write( "package.", tname, "[ ", qformat( m ),
                      " ] = function( ... )\n",
-                     bytes, "\nend\n\n" )
+                     indent(bytes, 1),
+                     "\nend\n\n" )
         end
       end
     end

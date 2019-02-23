@@ -247,8 +247,7 @@ end
 -- collects the module and script sources, and writes the amalgamated
 -- source.
 local function amalgamate( ... )
-  local oname, script, dbg, use_cache, tname, ignores, modules =
-        parse_cmdline( ... )
+  local oname, script, dbg, use_cache, tname, ignores, modules = parse_cmdline( ... )
   local errors = {}
 
   -- When instructed to on the command line, the cache file is loaded,
@@ -274,6 +273,22 @@ local function amalgamate( ... )
   if oname then
     out = assert( io.open( oname, "w" ) )
   end
+
+  out:write( [=[
+-- Begin Redis support
+local package = {
+  preload={}
+}
+local function require(name)
+  return package.preload[name]()
+end
+local arg = ARGV
+local io = nil
+local os = nil
+-- End Redis support
+
+
+]=] )
 
   local script_bytes, script_binary
   if script then
@@ -347,10 +362,19 @@ end
           -- Under normal circumstances Lua files are pasted into a
           -- new anonymous vararg function, which then is put into
           -- `package.preload` so that `require` can find it.
-          out:write( "package.", tname, "[ ", qformat( m ),
-                     " ] = function( ... )\n",
-                     indent(bytes, 1),
-                     "\nend\n\n" )
+          out:write( "package.", tname, "[", qformat( m ), "] = function(...)\n" )
+          
+          -- BEGIN module-specific hacks
+          
+          -- BEGIN HACK 1: https://github.com/Yonaba/Moses/issues/66
+          if m == 'moses' then
+            out:write("  os = {}\n")
+          end
+          -- END HACK 1
+          
+          -- END module-specific hacks
+          
+          out:write(indent(bytes, 1), "\nend\n\n")
         end
       end
     end

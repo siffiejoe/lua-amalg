@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.1.1] - 2019-02-24
 ### Fixed
 - [#1](https://github.com/BixData/lua-amalg-redis/issues/1) Cannot require `cjson` or other built-in modules
 

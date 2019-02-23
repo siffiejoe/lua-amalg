@@ -18,7 +18,7 @@ The Lua runtime in Redis doesn't support some of the optional Lua modules that a
 You can bundle a collection of modules in a single file by calling the
 `amalg.lua` script and passing the module names on the commandline.
 
-	$ amalg-redis module1 module2
+	$ amalg-redis.lua module1 module2
 
 The modules are collected using `package.path`, so they have to be
 available there. The resulting merged Lua code will be written to the
@@ -28,19 +28,19 @@ Lua modules available for `require`.
 You can specify an output file to use instead of the standard output
 stream.
 
-	$ amalg-redis -o out.lua module1 module2
+	$ amalg-redis.lua -o out.lua module1 module2
 
 You can also embed the main script of your application in the merged
 Lua code as well. Of course the embedded Lua modules can be
 `require`'d in the main script.
 
-	$ amalg-redis -o out.lua -s main.lua module1 module2
+	$ amalg-redis.lua -o out.lua -s main.lua module1 module2
 
 If you want the original file names and line numbers to appear in
 error messages, you have to activate debug mode. This will require
 slightly more memory, however.
 
-	$ amalg-redis -o out.lua -d -s main.lua module1 module2
+	$ amalg-redis.lua -o out.lua -d -s main.lua module1 module2
 
 To collect all Lua (and C) modules used by a program, you can load the
 `amalg.lua` script as a module, and it will intercept calls to
@@ -55,13 +55,13 @@ multiple concurrent processes!
 You can use the cache (in addition to all module names given on the
 commandline) using the `-c` flag.
 
-	$ amalg-redis -o out.lua -s main.lua -c
+	$ amalg-redis.lua -o out.lua -s main.lua -c
 
 In some cases you may want to ignore automatically listed modules in
 the cache without editing the cache file. Use the `-i` option for that
 and specify a Lua pattern:
 
-	$ amalg-redis -o out.lua -s main.lua -c -i "^luarocks%."
+	$ amalg-redis.lua -o out.lua -s main.lua -c -i "^luarocks%."
 
 The `-i` option can be used multiple times to specify multiple
 patterns.
@@ -71,7 +71,7 @@ installed (possibly newer) versions of the same modules. If you want
 to use local modules when available and only fall back to the
 amalgamated code otherwise, you can specify the `-f` flag.
 
-	$ amalg-redis -o out.lua -s main.lua -c -f
+	$ amalg-redis.lua -o out.lua -s main.lua -c -f
 
 This installs another searcher/loader function at the end of the
 `package.searchers` (or `package.loaders` on Lua 5.1) and adds a new

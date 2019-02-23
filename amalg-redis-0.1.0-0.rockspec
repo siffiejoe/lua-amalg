@@ -24,7 +24,7 @@ build = {
    },
    install = {
      bin = {
-       ["amalg-redis"] = "src/amalg-redis.lua"
+       ["amalg-redis.lua"] = "src/amalg-redis.lua"
      }
    }
 }

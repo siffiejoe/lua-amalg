@@ -1,0 +1,11 @@
+## [Unreleased]
+### Fixed
+- [#1](https://github.com/BixData/lua-amalg-redis/issues/1) Cannot require `cjson` or other built-in modules
+
+## [0.1.0] - 2019-02-23
+### Added
+- Prefix amalgamated scripts with Redis support
+- Indent code so that amalgamated result conforms to 2-space indents
+- Initial port of `lua-amalg`
+
+<small>(formatted per [keepachangelog-1.1.0](http://keepachangelog.com/en/1.0.0/))</small>

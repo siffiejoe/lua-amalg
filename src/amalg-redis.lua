@@ -276,10 +276,23 @@ local function amalgamate( ... )
 
   out:write( [=[
 -- Begin Redis support
+local builtins = {
+  ['cjson'] = cjson,
+  ['cmsgpack'] = cmsgpack,
+  ['math'] = math,
+  ['redis.breakpoint'] = redis.breakpoint,
+  ['redis.debug'] = redis.debug,
+  ['redis.sha1hex'] = redis.sha1hex,
+  ['string'] = string,
+  ['struct'] = struct,
+  ['table'] = table
+}
 local package = {
   preload={}
 }
 local function require(name)
+  local builtin = builtins[name]
+  if builtin then return builtin end
   return package.preload[name]()
 end
 local arg = ARGV

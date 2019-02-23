@@ -381,7 +381,7 @@ end
           
           -- BEGIN HACK 1: https://github.com/Yonaba/Moses/issues/66
           if m == 'moses' then
-            out:write("  os = {}\n")
+            out:write("  local os = {}\n")
           end
           -- END HACK 1
           

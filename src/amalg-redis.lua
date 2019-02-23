@@ -288,12 +288,16 @@ local builtins = {
   ['table'] = table
 }
 local package = {
+  loaded={},
   preload={}
 }
 local function require(name)
   local builtin = builtins[name]
   if builtin then return builtin end
-  return package.preload[name]()
+  if package.loaded[name] == nil then
+    package.loaded[name] = package.preload[name]()
+  end
+  return package.loaded[name]
 end
 local arg = ARGV
 local io = nil

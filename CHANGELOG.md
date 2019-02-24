@@ -1,3 +1,7 @@
+## [Unreleased]
+### Added
+- Enable Travis CI
+
 ## [0.1.1] - 2019-02-24
 ### Fixed
 - [#5](https://github.com/BixData/lua-amalg-redis/issues/5) Custom module loader fails to ensure modules are singletons; downstream class type comparisons fail

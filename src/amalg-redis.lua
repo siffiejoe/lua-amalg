@@ -276,26 +276,27 @@ local function amalgamate( ... )
 
   out:write( [=[
 -- Begin Redis support
-local builtins = {
-  ['cjson'] = cjson,
-  ['cmsgpack'] = cmsgpack,
-  ['math'] = math,
-  ['redis.breakpoint'] = redis.breakpoint,
-  ['redis.debug'] = redis.debug,
-  ['redis.sha1hex'] = redis.sha1hex,
-  ['string'] = string,
-  ['struct'] = struct,
-  ['table'] = table
-}
 local package = {
-  loaded={},
+  loaded={
+    ['cjson'] = cjson,
+    ['cmsgpack'] = cmsgpack,
+    ['math'] = math,
+    ['redis.breakpoint'] = redis.breakpoint,
+    ['redis.debug'] = redis.debug,
+    ['redis.sha1hex'] = redis.sha1hex,
+    ['string'] = string,
+    ['struct'] = struct,
+    ['table'] = table
+  },
   preload={}
 }
 local function require(name)
-  local builtin = builtins[name]
-  if builtin then return builtin end
   if package.loaded[name] == nil then
-    package.loaded[name] = package.preload[name]()
+    local preloadFn = package.preload[name]
+    if preloadFn == nil then
+      error(string.format("module '%s' not found: no field package.preload['%s']", name, name))
+    end
+    package.loaded[name] = preloadFn()
   end
   return package.loaded[name]
 end

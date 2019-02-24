@@ -1,5 +1,9 @@
 # Amalgamation of Lua Scripts for Redis
 
+![Build Status](https://travis-ci.org/BixData/lua-amalg-redis.svg?branch=master)
+[![License](http://img.shields.io/badge/Licence-MIT-blue.svg)](LICENSE)
+[![Lua](https://img.shields.io/badge/Lua-5.1%20|%205.2%20|%205.3%20|%20JIT%202.0%20|%20JIT%202.1%20-blue.svg)]()
+
 This is a fork of [siffiejoe/lua-amalg](https://github.com/siffiejoe/lua-amalg/blob/master/README.md) that is specific to performing Lua script amalgamation for scripts targeting Redis.
 
 The Lua runtime in Redis doesn't support some of the optional Lua modules that are common to an operating system based Lua VM, and lua-amalg makes a few too many assumptions in that regard, causing it to generate amalgamated scripts that won't run in Redis.

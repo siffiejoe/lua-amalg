@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.1.2] - 2019-03-08
 ### Added
 - Enable Travis CI
 

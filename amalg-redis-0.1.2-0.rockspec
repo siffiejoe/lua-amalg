@@ -1,8 +1,8 @@
 package = "amalg-redis"
-version = "0.1.1-0"
+version = "0.1.2-0"
 source = {
-   url = "https://github.com/BixData/lua-amalg-redis/archive/0.1.1-0.tar.gz",
-   dir = "lua-amalg-redis-0.1.1-0"
+   url = "https://github.com/BixData/lua-amalg-redis/archive/0.1.2-0.tar.gz",
+   dir = "lua-amalg-redis-0.1.2-0"
 }
 description = {
    summary = "A Lua amalgamator for Redis",

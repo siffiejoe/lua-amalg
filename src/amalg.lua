@@ -89,9 +89,10 @@
 -- against race conditions)!
 --
 -- You can use the cache (in addition to all module names given on the
--- command line) using the `-c` flag:
+-- command line) using the `-c` or -C flag:
 --
 --     ./amalg.lua -o out.lua -s main.lua -c
+--     ./amalg.lua -o out.lua -s main.lua -C myamalg.cache
 --
 -- However, this will only embed the Lua modules. To also embed the C
 -- modules (both from the cache and from the command line), you have
@@ -111,6 +112,18 @@
 -- The `-i` option can be used multiple times to specify multiple
 -- patterns.
 --
+-- Usually, the amalgamated modules take precedence over locally
+-- installed (possibly newer) versions of the same modules. If you
+-- want to use local modules when available and only fall back to the
+-- amalgamated code otherwise, you can specify the `-f` flag.
+--
+--     ./amalg.lua -o out.lua -s main.lua -c -f
+--
+-- This installs another searcher/loader function at the end of
+-- `package.searchers` (or `package.loaders` on Lua 5.1) and adds
+-- a new table `package.postload` that serves the same purpose as the
+-- standard `package.preload` table.
+--
 -- To fix a compatibility issue with Lua 5.1's vararg handling,
 -- `amalg.lua` by default adds a local alias to the global `arg` table
 -- to every loaded module. If for some reason you don't want that, use
@@ -119,13 +132,6 @@
 -- table as `_G.arg`).
 --
 --     ./amalg.lua -o out.lua -a -s main.lua -c
---
--- To enable late/lazy loading of amalgated code, specify the -z flag.
--- This will try to traditionally require() the modules, and
--- only in case of failure it will load the amalgated version.
--- This is primarily used to deploy customized versions of
--- some of your modules, and have a default amalgated base
--- installation of your project.
 --
 -- That's it. For further info consult the source.
 --
@@ -158,6 +164,7 @@ end
 -- *   `-o <file>`: specify output file (default is `stdout`)
 -- *   `-s <file>`: specify main script to bundle
 -- *   `-c`: add the modules listed in the cache file `amalg.cache`
+-- *   `-C` <file>: add the modules listed in the cache file <file>
 -- *   `-i <pattern>`: ignore modules in the cache file matching the
 --     given pattern (can be given multiple times)
 -- *   `-d`: enable debug mode (file names and line numbers in error
@@ -172,8 +179,8 @@ end
 -- command line (e.g. duplicate options) a warning is printed to the
 -- console.
 local function parse_cmdline( ... )
-  local modules, afix, ignores, use_cache, cmods, dbg, script, oname, load_late =
-        {}, true, {}
+  local modules, afix, ignores, tname, use_cache, cmods, dbg, script, oname, cname =
+        {}, true, {}, "preload"
 
   local function set_oname( v )
     if v then
@@ -185,6 +192,17 @@ local function parse_cmdline( ... )
       warn( "Missing argument for -o option!" )
     end
   end
+  
+  local function set_cname( v )
+    if v then
+      if cname then
+        warn( "Resetting amalg.cache file `"..cname.."'! Using `"..v.."' now!" )
+      end
+      cname = v
+    else
+      warn( "Missing argument for -C option!" )
+    end
+  end 
 
   local function set_script( v )
     if v then
@@ -226,16 +244,20 @@ local function parse_cmdline( ... )
     elseif a == "-i" then
       i = i + 1
       add_ignore( i <= n and select( i, ... ) )
+    elseif a == "-f" then
+      tname = "postload"
     elseif a == "-c" then
       use_cache = true
+    elseif a == "-C" then
+      use_cache = true
+      i = i + 1
+      set_cname( i <= n and select( i, ... ) )
     elseif a == "-x" then
       cmods = true
     elseif a == "-d" then
       dbg = true
     elseif a == "-a" then
       afix = false
-    elseif a == "-z" then
-      load_late = true
     else
       local prefix = a:sub( 1, 2 )
       if prefix == "-o" then
@@ -252,7 +274,7 @@ local function parse_cmdline( ... )
     end
     i = i + 1
   end
-  return oname, script, dbg, afix, use_cache, ignores, cmods, modules, load_late
+  return oname, script, dbg, afix, use_cache, tname, ignores, cmods, modules,cname
 end
 
 
@@ -317,9 +339,10 @@ end
 
 -- When the `-c` command line flag is given, the contents of the cache
 -- file `amalg.cache` are used to specify the modules to embed. This
--- function is used to load the cache file:
-local function readcache()
-  local chunk = loadfile( cache, "t", {} )
+-- function is used to load the cache file. <opt_file> ist optional:
+local function readcache(opt_file)
+  print("opt",opt_file)
+  local chunk = loadfile( opt_file or cache, "t", {} )
   if chunk then
     if setfenv then setfenv( chunk, {} ) end
     local result = chunk()
@@ -376,7 +399,7 @@ end
 -- collects the module and script sources, and writes the amalgamated
 -- source.
 local function amalgamate( ... )
-  local oname, script, dbg, afix, use_cache, ignores, cmods, modules,load_late =
+  local oname, script, dbg, afix, use_cache, tname, ignores, cmods, modules, amalg_cache =
         parse_cmdline( ... )
   local errors = {}
 
@@ -384,7 +407,7 @@ local function amalgamate( ... )
   -- and the modules are added to the ones listed on the command line
   -- unless they are ignored via the `-i` command line option.
   if use_cache then
-    local c = readcache()
+    local c = readcache(amalg_cache)
     for k,v in pairs( c or {} ) do
       local addmodule = true
       for _,p in ipairs( ignores ) do
@@ -418,15 +441,32 @@ local function amalgamate( ... )
     out:write( "do\n\n" )
   end
 
-  -- Option -z: if module exists besides the amalgamed version,
-  -- load it; package.preload wont be used then.
-  if load_late then
-    out:write( [[
-      local searchers = package.searchers or package.loaders
-      table.insert(searchers, 1, searchers[2])
-      table.insert(searchers, 2, searchers[3+1])
-    ]] )
+  -- If fallback loading is requested, the module loaders of the
+  -- amalgamated module are registered in table `package.postload`,
+  -- and an extra searcher function is added at the end of
+  -- `package.searchers`.
+  if tname == "postload" then
+    out:write([=[
+do
+  local assert = assert
+  local type = assert( type )
+  local searchers = package.searchers or package.loaders
+  local postload = {}
+  package.postload = postload
+  searchers[ #searchers+1 ] = function( mod )
+    assert( type( mod ) == "string", "module name must be a string" )
+    local loader = postload[ mod ]
+    if loader == nil then
+      return "\n\tno field package.postload['"..mod.."']"
+    else
+      return loader
+    end
   end
+end
+
+]=] )
+  end
+
   -- Sort modules alphabetically. Modules will be embedded in
   -- alphabetical order. This ensures deterministic output.
   local module_names = {}
@@ -460,7 +500,7 @@ local function amalgamate( ... )
           -- preserves file name and line number information, this
           -- approach is used for all files if the debug mode is active
           -- (`-d` command line option).
-          out:write( "package.preload[ ", qformat( m ),
+          out:write( "package.", tname, "[ ", qformat( m ),
                      " ] = assert( (loadstring or load)(\n",
                      qformat( bytes ), "\n, '@'..",
                      qformat( path ), " ) )\n\n" )
@@ -478,7 +518,7 @@ local function amalgamate( ... )
           -- `amalg.lua` adds a local alias to the global `arg` table
           -- unless the `-a` command line flag is specified.
           out:write( "do\nlocal _ENV = _ENV\n",
-                     "package.preload[ ", qformat( m ),
+                     "package.", tname, "[ ", qformat( m ),
                      " ] = function( ... ) ",
                      afix and "local arg = _G.arg;\n" or "_ENV = _ENV;\n",
                      bytes, "\nend\nend\n\n" )
@@ -601,7 +641,7 @@ end
         -- from the module name at the end first, and then at the
         -- beginning if that failed.
         local qm = qformat( m )
-        out:write( "package.preload[ ", qm, " ] = function()\n",
+        out:write( "package.", tname, "[ ", qm, " ] = function()\n",
                    "  local dll = dllnames[ ", qpath, " ]()\n" )
         if openf1 then
           out:write( "  local loader = package_loadlib( dll, ",

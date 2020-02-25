@@ -83,6 +83,11 @@ commandline) using the `-c` flag.
 
     ./amalg.lua -o out.lua -s main.lua -c
 
+Or you can use the cache (in addition to all module names given on the
+commandline) using the `-C <file>` flag to use a custom cache file.
+
+    ./amalg.lua -o out.lua -s main.lua -C myamalg.cache
+
 However, this will only embed the Lua modules. To also embed C modules
 (both from the cache and from the command line), you have to specify
 the `-x` flag:

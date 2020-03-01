@@ -89,9 +89,10 @@
 -- against race conditions)!
 --
 -- You can use the cache (in addition to all module names given on the
--- command line) using the `-c` flag:
+-- command line) using the `-c` or `-C` flag:
 --
 --     ./amalg.lua -o out.lua -s main.lua -c
+--     ./amalg.lua -o out.lua -s main.lua -C myamalg.cache
 --
 -- However, this will only embed the Lua modules. To also embed the C
 -- modules (both from the cache and from the command line), you have
@@ -163,6 +164,7 @@ end
 -- *   `-o <file>`: specify output file (default is `stdout`)
 -- *   `-s <file>`: specify main script to bundle
 -- *   `-c`: add the modules listed in the cache file `amalg.cache`
+-- *   `-C <file>`: add the modules listed in the cache file <file>
 -- *   `-i <pattern>`: ignore modules in the cache file matching the
 --     given pattern (can be given multiple times)
 -- *   `-d`: enable debug mode (file names and line numbers in error
@@ -177,7 +179,7 @@ end
 -- command line (e.g. duplicate options) a warning is printed to the
 -- console.
 local function parse_cmdline( ... )
-  local modules, afix, ignores, tname, use_cache, cmods, dbg, script, oname =
+  local modules, afix, ignores, tname, use_cache, cmods, dbg, script, oname, cname =
         {}, true, {}, "preload"
 
   local function set_oname( v )
@@ -188,6 +190,17 @@ local function parse_cmdline( ... )
       oname = v
     else
       warn( "Missing argument for -o option!" )
+    end
+  end
+
+  local function set_cname( v )
+    if v then
+      if cname then
+        warn( "Resetting cache file `"..cname.."'! Using `"..v.."' now!" )
+      end
+      cname = v
+    else
+      warn( "Missing argument for -C option!" )
     end
   end
 
@@ -235,6 +248,10 @@ local function parse_cmdline( ... )
       tname = "postload"
     elseif a == "-c" then
       use_cache = true
+    elseif a == "-C" then
+      use_cache = true
+      i = i + 1
+      set_cname( i <= n and select( i, ... ) )
     elseif a == "-x" then
       cmods = true
     elseif a == "-d" then
@@ -257,7 +274,7 @@ local function parse_cmdline( ... )
     end
     i = i + 1
   end
-  return oname, script, dbg, afix, use_cache, tname, ignores, cmods, modules
+  return oname, script, dbg, afix, use_cache, tname, ignores, cmods, modules, cname
 end
 
 
@@ -322,9 +339,9 @@ end
 
 -- When the `-c` command line flag is given, the contents of the cache
 -- file `amalg.cache` are used to specify the modules to embed. This
--- function is used to load the cache file:
-local function readcache()
-  local chunk = loadfile( cache, "t", {} )
+-- function is used to load the cache file. <filename> ist optional:
+local function readcache( filename )
+  local chunk = loadfile( filename or cache, "t", {} )
   if chunk then
     if setfenv then setfenv( chunk, {} ) end
     local result = chunk()
@@ -381,7 +398,7 @@ end
 -- collects the module and script sources, and writes the amalgamated
 -- source.
 local function amalgamate( ... )
-  local oname, script, dbg, afix, use_cache, tname, ignores, cmods, modules =
+  local oname, script, dbg, afix, use_cache, tname, ignores, cmods, modules, cname =
         parse_cmdline( ... )
   local errors = {}
 
@@ -389,7 +406,7 @@ local function amalgamate( ... )
   -- and the modules are added to the ones listed on the command line
   -- unless they are ignored via the `-i` command line option.
   if use_cache then
-    local c = readcache()
+    local c = readcache( cname )
     for k,v in pairs( c or {} ) do
       local addmodule = true
       for _,p in ipairs( ignores ) do

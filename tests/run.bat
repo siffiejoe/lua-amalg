@@ -8,6 +8,8 @@ if [%1]==[51] (
   call :runtest 52
 ) else if [%1]==[53] (
   call :runtest 53
+) else if [%1]==[54] (
+  call :runtest 54
 ) else (
   call :runtest 51
 )

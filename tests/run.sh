@@ -1,11 +1,15 @@
 #!/bin/bash -e
 
 LUAV=$1
-if [ x"$1" != x5.1 -a x"$1" != x5.2 -a x"$1" != x5.3 ]; then
+if [ x"$1" != x5.1 -a x"$1" != x5.2 -a x"$1" != x5.3 -a x"$1" != x5.4 ]; then
   LUAV=5.1
 fi
 
-INC=/usr/include/lua$LUAV
+if [ "$LUAV" == 5.4 ]; then
+  INC=/home/siffiejoe/.self/programs/lua$LUAV
+else
+  INC=/usr/include/lua$LUAV
+fi
 
 gcc -Wall -Wextra -Os -fpic -I"$INC" -shared -o cmod.so cmod.c
 gcc -Wall -Wextra -Os -fpic -I"$INC" -shared -o aiomod.so aiomod.c

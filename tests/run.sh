@@ -36,6 +36,10 @@ echo -n "amalgamate modules and script in binary form ... "
 lua$LUAV -e 'package.path = "./?.luac;"..package.path' ../src/amalg.lua -o binout.lua -s main.lua module1 module2
 lua$LUAV binout.lua
 
+echo -n "amalgamate and transform modules and script ... "
+lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o zippedout.lua -s main.lua -z luac module1 module2
+lua$LUAV zippedout.lua
+
 echo -n "amalgamate modules and script without arg fix ... "
 lua$LUAV ../src/amalg.lua -o afixout.lua -a -s main.lua module1 module2
 lua$LUAV afixout.lua
@@ -60,5 +64,5 @@ lua$LUAV ignout.lua
 
 exit 0
 
-rm -f module1.luac module2.luac modules.lua fallbacks.lua textout.lua binout.lua afixout.lua debugout.lua cacheout.lua cmodout.lua ignout.lua amalg.cache cmod.so aiomod.so
+rm -f module1.luac module2.luac modules.lua fallbacks.lua textout.lua binout.lua zippedout.lua afixout.lua debugout.lua cacheout.lua cmodout.lua ignout.lua amalg.cache cmod.so aiomod.so
 

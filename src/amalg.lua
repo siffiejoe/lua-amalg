@@ -11,17 +11,14 @@
 --     are `require`d.
 -- *   Can embed compiled C modules.
 -- *   Can collect `require`d Lua (and C) modules automatically.
+-- *   Can compress/decompress or precompile using plugin modules.
 --
 -- What it doesn't do:
 --
--- *   It does not compile to bytecode. Use `luac` for that yourself,
---     or take a look at [squish][1], or [luac.lua][4].
 -- *   It doesn't do static analysis of Lua code to collect `require`d
 --     modules. That won't work reliably anyway in a dynamic language!
 --     You can write your own program for that (e.g. using the output
 --     of `luac -p -l`), or use [squish][1], or [soar][3] instead.
--- *   It will not compress, minify, obfuscate your Lua source code,
---     or any of the other things [squish][1] can do.
 -- *   It doesn't handle the dependencies of C modules, so it is best
 --     used on C modules without dependencies (e.g. LuaSocket, LFS,
 --     etc.).
@@ -133,6 +130,14 @@
 --
 --     ./amalg.lua -o out.lua -a -s main.lua -c
 --
+-- There is also some compression/decompression support handled via
+-- plugins to amalg. To select a transformation us the `-z` option.
+-- Multiple compression/transformation steps are possible, and they
+-- are executed in the given order. The necessary decompression code
+-- is embedded in the result and executed automatically.
+--
+--     ./amalg.lua -o out.lua -s main.lua -c -z luac -z gzip
+--
 -- That's it. For further info consult the source.
 --
 --
@@ -172,6 +177,7 @@ end
 -- *   `-a`: do *not* apply the `arg` fix (local alias for the global
 --     `arg` table)
 -- *   `-x`: also embed compiled C modules
+-- *   `-z <plugin>`: use compression/transformation plugin
 -- *   `--`: stop parsing command line flags (all remaining arguments
 --     are considered module names)
 --
@@ -179,8 +185,9 @@ end
 -- command line (e.g. duplicate options) a warning is printed to the
 -- console.
 local function parse_cmdline( ... )
-  local modules, afix, ignores, tname, use_cache, cmods, dbg, script, oname, cname =
-        {}, true, {}, "preload"
+  local modules, afix, ignores, plugins, tname, use_cache, cmods, dbg, script, oname, cname =
+        {}, true, {}, {}, "preload"
+  local plugin_set = {} -- to remove duplicates
 
   local function set_oname( v )
     if v then
@@ -227,6 +234,20 @@ local function parse_cmdline( ... )
     end
   end
 
+  local function add_plugin( v )
+    if v then
+      if not pcall( require, "amalg."..v..".inflate" ) or
+         not pcall( require, "amalg."..v..".deflate" ) then
+        warn( "Broken compression plugin: '"..v.."'" )
+      elseif not plugin_set[ v ] then
+        plugins[ #plugins+1 ] = v
+        plugin_set[ v ] = true
+      end
+    else
+      warn( "Missing argument for -z option!" )
+    end
+  end
+
   local i, n = 1, select( '#', ... )
   while i <= n do
     local a = select( i, ... )
@@ -244,6 +265,9 @@ local function parse_cmdline( ... )
     elseif a == "-i" then
       i = i + 1
       add_ignore( i <= n and select( i, ... ) )
+    elseif a == "-z" then
+      i = i + 1
+      add_plugin( i <= n and select( i, ... ) )
     elseif a == "-f" then
       tname = "postload"
     elseif a == "-c" then
@@ -274,7 +298,7 @@ local function parse_cmdline( ... )
     end
     i = i + 1
   end
-  return oname, script, dbg, afix, use_cache, tname, ignores, cmods, modules, cname
+  return oname, script, dbg, afix, use_cache, tname, ignores, plugins, cmods, modules, cname
 end
 
 
@@ -306,8 +330,10 @@ end
 -- into memory in a single go, because under some circumstances (e.g.
 -- binary chunks, shebang lines, `-d` command line flag) some
 -- preprocessing/escaping is necessary. This function reads a whole
--- Lua file and returns the contents as a Lua string.
-local function readluafile( path )
+-- Lua file and returns the contents as a Lua string. If there are
+-- compression/transformation plugins specified, the deflate parts of
+-- those plugins are executed on the file contents in the given order.
+local function readluafile( path, plugins )
   local is_bin = is_bytecode( path )
   local s = readfile( path, is_bin )
   local shebang
@@ -317,6 +343,10 @@ local function readluafile( path )
     -- code can be embedded in the output.
     shebang = s:match( "^(#![^\n]*)" )
     s = s:gsub( "^#[^\n]*", "" )
+  end
+  for _, p in ipairs( plugins ) do
+    local r, b = require( "amalg."..p..".deflate" )( s, not is_bin, path )
+    s, is_bin = r, (is_bin or not b)
   end
   return s, is_bin, shebang
 end
@@ -393,12 +423,61 @@ if not searchpath then
 end
 
 
+-- Every active plugin's inflate part is called on the code in the reverse
+-- order the deflate parts were executed on the input files. The closing
+-- parentheses are not included in the resulting string.
+local function add_inflate_calls( plugins )
+  local s = ""
+  for _, p in ipairs( plugins ) do
+    s = s.." require( \"amalg.\".."..qformat( p ).."..\".inflate\" )("
+  end
+  return s
+end
+
+
+-- Lua modules are written to the output file in a format that can be
+-- loaded by the Lua interpreter.
+local function writeluamodule( out, m, path, plugins, tname, dbg, afix )
+  local bytes, is_bin = readluafile( path, plugins )
+  if is_bin or dbg then
+    -- Precompiled Lua modules are loaded via the standard Lua
+    -- function `load` (or `loadstring` in Lua 5.1). Since this
+    -- preserves file name and line number information, this
+    -- approach is used for all files if the debug mode is active
+    -- (`-d` command line option).
+    out:write( "package.", tname, "[ ", qformat( m ),
+               " ] = assert( (loadstring or load)(",
+               add_inflate_calls( plugins ), "\n",
+               qformat( bytes ), (" )"):rep( #plugins ), ", '@'..",
+               qformat( path ), " ) )\n\n" )
+  else
+    -- Under normal circumstances Lua files are pasted into a
+    -- new anonymous vararg function, which then is put into
+    -- `package.preload` so that `require` can find it. Each
+    -- function gets its own `_ENV` upvalue (on Lua 5.2+), and
+    -- special care is taken that `_ENV` always is the first
+    -- upvalue (important for the `module` function on Lua 5.2).
+    -- Lua 5.1 compiled with `LUA_COMPAT_VARARG` (the default) will
+    -- create a local `arg` variable to emulate the vararg handling
+    -- of Lua 5.0. This might interfere with Lua modules that access
+    -- command line arguments via the `arg` global. As a workaround
+    -- `amalg.lua` adds a local alias to the global `arg` table
+    -- unless the `-a` command line flag is specified.
+    out:write( "do\nlocal _ENV = _ENV\n",
+               "package.", tname, "[ ", qformat( m ),
+               " ] = function( ... ) ",
+               afix and "local arg = _G.arg;\n" or "_ENV = _ENV;\n",
+               bytes, "\nend\nend\n\n" )
+  end
+end
+
+
 -- This is the main function for the use case where `amalg.lua` is run
 -- as a script. It parses the command line, creates the output files,
 -- collects the module and script sources, and writes the amalgamated
 -- source.
 local function amalgamate( ... )
-  local oname, script, dbg, afix, use_cache, tname, ignores, cmods, modules, cname =
+  local oname, script, dbg, afix, use_cache, tname, ignores, plugins, cmods, modules, cname =
         parse_cmdline( ... )
   local errors = {}
 
@@ -433,7 +512,7 @@ local function amalgamate( ... )
   -- line was specified in the first place, that is).
   local script_bytes, script_binary, shebang
   if script then
-    script_bytes, script_binary, shebang = readluafile( script )
+    script_bytes, script_binary, shebang = readluafile( script, plugins )
     if shebang then
       out:write( shebang, "\n\n" )
     end
@@ -466,6 +545,20 @@ end
 ]=] )
   end
 
+  -- The inflate parts of every compression plugin must be included
+  -- into the output. Later plugins can be compressed by plugins that
+  -- have already been loaded.
+  local active_plugins = {}
+  for _,plugin in ipairs( plugins ) do
+    local m = "amalg."..plugin..".inflate"
+    local path, msg  = searchpath( m, package.path )
+    if not path then
+      error( "module `"..m.."' not found:"..msg )
+    end
+    writeluamodule( out, m, path, active_plugins, "preload", false, false )
+    active_plugins[ #active_plugins+1 ] = plugin
+  end
+
   -- Sort modules alphabetically. Modules will be embedded in
   -- alphabetical order. This ensures deterministic output.
   local module_names = {}
@@ -492,36 +585,7 @@ end
         -- name isn't a C module either.
         modules[ m ], errors[ m ] = "C", msg
       else
-        local bytes, is_bin = readluafile( path )
-        if is_bin or dbg then
-          -- Precompiled Lua modules are loaded via the standard Lua
-          -- function `load` (or `loadstring` in Lua 5.1). Since this
-          -- preserves file name and line number information, this
-          -- approach is used for all files if the debug mode is active
-          -- (`-d` command line option).
-          out:write( "package.", tname, "[ ", qformat( m ),
-                     " ] = assert( (loadstring or load)(\n",
-                     qformat( bytes ), "\n, '@'..",
-                     qformat( path ), " ) )\n\n" )
-        else
-          -- Under normal circumstances Lua files are pasted into a
-          -- new anonymous vararg function, which then is put into
-          -- `package.preload` so that `require` can find it. Each
-          -- function gets its own `_ENV` upvalue (on Lua 5.2+), and
-          -- special care is taken that `_ENV` always is the first
-          -- upvalue (important for the `module` function on Lua 5.2).
-          -- Lua 5.1 compiled with `LUA_COMPAT_VARARG` (the default) will
-          -- create a local `arg` variable to emulate the vararg handling
-          -- of Lua 5.0. This might interfere with Lua modules that access
-          -- command line arguments via the `arg` global. As a workaround
-          -- `amalg.lua` adds a local alias to the global `arg` table
-          -- unless the `-a` command line flag is specified.
-          out:write( "do\nlocal _ENV = _ENV\n",
-                     "package.", tname, "[ ", qformat( m ),
-                     " ] = function( ... ) ",
-                     afix and "local arg = _G.arg;\n" or "_ENV = _ENV;\n",
-                     bytes, "\nend\nend\n\n" )
-        end
+        writeluamodule( out, m, path, plugins, tname, dbg, afix )
       end
     end
   end
@@ -664,9 +728,10 @@ end
   if script then
     out:write( "end\n\n" )
     if script_binary or dbg then
-      out:write( "assert( (loadstring or load)(\n",
-                 qformat( script_bytes ), "\n, '@'..",
-                 qformat( script ), " ) )( ... )\n\n" )
+      out:write( "assert( (loadstring or load)(",
+                 add_inflate_calls( plugins ), "\n",
+                 qformat( script_bytes ), (" )"):rep( #plugins ),
+                 ", '@'..", qformat( script ), " ) )( ... )\n\n" )
     else
       out:write( script_bytes )
     end

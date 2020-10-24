@@ -22,6 +22,8 @@ build = {
     amalg = "src/amalg.lua"
     ["amalg.luac.inflate"] = "src/amalg/luac/inflate.lua",
     ["amalg.luac.deflate"] = "src/amalg/luac/deflate.lua",
+    ["amalg.zlib.inflate"] = "src/amalg/zlib/inflate.lua",
+    ["amalg.zlib.deflate"] = "src/amalg/zlib/deflate.lua",
   },
   install = {
     bin = {

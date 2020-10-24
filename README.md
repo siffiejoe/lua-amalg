@@ -15,18 +15,17 @@ Features:
     `require`'d.
 *   Can embed compiled C modules.
 *   Can collect `require`'d Lua (and C) modules automatically.
+*   Can compress/decompress or precompile using plugin modules.
 
 What it doesn't do:
 
-*   It does not compile to bytecode. Use `luac` for that yourself, or
-    take a look at [squish][1], or [luac.lua][4].
 *   It doesn't do static analysis of Lua code to collect `require`'d
     modules. That won't work reliably anyway. You can write your own
     program for that (using the output of `luac -p -l`), or use
     [squish][1], or [soar][3] instead.
-*   It will not compress, minify, obfuscate your Lua source code, or
-    any of the other things [squish][1] can do.
-*   It doesn't handle the dependencies of C modules.
+*   It doesn't handle the dependencies of C modules, so it is best
+    used on C modules without dependencies (e.g. LuaSocket, LFS,
+    etc.).
 
 There are alternatives to this program: See [squish][1], [LOOP][2],
 [soar][3], [luac.lua][4], and [bundle.lua][5] (and probably some
@@ -125,6 +124,14 @@ table as `_G.arg`).
 
     ./amalg.lua -o out.lua -a -s main.lua -c
 
+There is also some compression/decompression support handled via
+plugins to amalg. To select a transformation us the `-z` option.
+Multiple compression/transformation steps are possible, and they are
+executed in the given order. The necessary decompression code is
+embedded in the result and executed automatically.
+
+    ./amalg.lua -o out.lua -s main.lua -c -z luac -z zlib
+
 That's it. For further info consult the source (there's a nice
 [annotated HTML file][6] rendered with [Docco][7] on the GitHub
 pages). Have fun!
@@ -145,7 +152,7 @@ Comments and feedback are always welcome.
 `amalg` is *copyrighted free software* distributed under the MIT
 license (the same license as Lua 5.1). The full license text follows:
 
-    amalg (c) 2013-2018 Philipp Janda
+    amalg (c) 2013-2020 Philipp Janda
 
     Permission is hereby granted, free of charge, to any person obtaining
     a copy of this software and associated documentation files (the

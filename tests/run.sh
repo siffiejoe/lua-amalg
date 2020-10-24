@@ -37,7 +37,7 @@ lua$LUAV -e 'package.path = "./?.luac;"..package.path' ../src/amalg.lua -o binou
 lua$LUAV binout.lua
 
 echo -n "amalgamate and transform modules and script ... "
-lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o zippedout.lua -s main.lua -z luac module1 module2
+lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o zippedout.lua -s main.lua -z luac -z zlib module1 module2
 lua$LUAV zippedout.lua
 
 echo -n "amalgamate modules and script without arg fix ... "

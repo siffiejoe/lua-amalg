@@ -136,7 +136,7 @@
 -- are executed in the given order. The necessary decompression code
 -- is embedded in the result and executed automatically.
 --
---     ./amalg.lua -o out.lua -s main.lua -c -z luac -z gzip
+--     ./amalg.lua -o out.lua -s main.lua -c -z luac -z zlib
 --
 -- That's it. For further info consult the source.
 --
@@ -236,10 +236,9 @@ local function parse_cmdline( ... )
 
   local function add_plugin( v )
     if v then
-      if not pcall( require, "amalg."..v..".inflate" ) or
-         not pcall( require, "amalg."..v..".deflate" ) then
-        warn( "Broken compression plugin: '"..v.."'" )
-      elseif not plugin_set[ v ] then
+      require( "amalg."..v..".deflate" )
+      require( "amalg."..v..".inflate" )
+      if not plugin_set[ v ] then
         plugins[ #plugins+1 ] = v
         plugin_set[ v ] = true
       end
@@ -429,7 +428,7 @@ end
 local function add_inflate_calls( plugins )
   local s = ""
   for _, p in ipairs( plugins ) do
-    s = s.." require( \"amalg.\".."..qformat( p ).."..\".inflate\" )("
+    s = s.." require( "..qformat( "amalg."..p..".inflate" ).." )("
   end
   return s
 end

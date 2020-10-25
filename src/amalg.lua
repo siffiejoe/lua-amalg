@@ -183,8 +183,10 @@ end
 --     messages will point to the original location)
 -- *   `-a`: do *not* apply the `arg` fix (local alias for the global
 --     `arg` table)
+-- *   `-f`: use embedded modules only as a fallback
 -- *   `-x`: also embed compiled C modules
--- *   `-z <plugin>`: use compression/transformation plugin
+-- *   `-t <plugin>`: use transformation plugin
+-- *   `-z <plugin>`: use compression plugin
 -- *   `--`: stop parsing command line flags (all remaining arguments
 --     are considered module names)
 --
@@ -240,7 +242,6 @@ local function parse_cmdline( ... )
       warn( "Missing argument for -i option!" )
     end
   end
-
 
   local function add_transformation( v )
     if v then
@@ -338,7 +339,7 @@ local function is_bytecode( path )
 end
 
 
--- Read the whole contents of a file into memory without any
+-- Reads the whole contents of a file into memory without any
 -- processing.
 local function readfile( path, is_bin )
   local f = assert( io.open( path, is_bin and "rb" or "r" ) )
@@ -595,7 +596,7 @@ end
     active_plugins[ #active_plugins+1 ] = plugin
   end
 
-  -- Sort modules alphabetically. Modules will be embedded in
+  -- Sorts modules alphabetically. Modules will be embedded in
   -- alphabetical order. This ensures deterministic output.
   local module_names = {}
   for m in pairs( modules ) do
@@ -688,7 +689,7 @@ do
           end
         end
         local qpath = qformat( path )
-        -- Build the symbol(s) to look for in the dynamic library.
+        -- Builds the symbol(s) to look for in the dynamic library.
         -- There may be multiple candidates because of optional
         -- version information in the module names and the different
         -- approaches of the different Lua versions in handling that.
@@ -735,7 +736,7 @@ do
 ]=] )
           prefix = ""
         end -- shared libary not embedded already
-        -- Add a function to `package.preload` to load the temporary
+        -- Adds a function to `package.preload` to load the temporary
         -- DLL or shared object file. This function tries to mimic the
         -- behavior of Lua 5.3 which is to strip version information
         -- from the module name at the end first, and then at the

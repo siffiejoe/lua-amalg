@@ -20,5 +20,13 @@ if ezlib_ok then
 end
 
 
-error( "no zlib module installed (none of lua-zlib, lzlib, ezlib)\n  " .. zlib .. "\n  " .. ezlib )
+local libdeflate_ok, libdeflate = pcall( require, "LibDeflate" )
+if libdeflate_ok then
+  return function( s )
+    return libdeflate:CompressDeflate( s )
+  end
+end
+
+
+error( "no zlib module installed (none of lua-zlib, lzlib, lua-ezlib, libdeflate)\n  "..zlib.. "\n  "..ezlib.."\n  "..libdeflate )
 

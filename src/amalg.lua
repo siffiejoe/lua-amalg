@@ -245,9 +245,9 @@ local function parse_cmdline( ... )
 
   local function add_transformation( v )
     if v then
-      require( "amalg."..v..".deflate" )
+      require( "amalg."..v..".transform" )
       if not plugin_set[ v ] then
-        plugins[ #plugins+1 ] = { v, false }
+        plugins[ #plugins+1 ] = { v, "transform" }
         plugin_set[ v ] = true
       end
     else
@@ -260,7 +260,7 @@ local function parse_cmdline( ... )
       require( "amalg."..v..".deflate" )
       require( "amalg."..v..".inflate" )
       if not plugin_set[ v ] then
-        plugins[ #plugins+1 ] = { v, true }
+        plugins[ #plugins+1 ] = { v, "deflate", "inflate" }
         plugin_set[ v ] = true
       end
     else
@@ -368,8 +368,10 @@ local function readluafile( path, plugins )
     s = s:gsub( "^#[^\n]*", "" )
   end
   for _, p in ipairs( plugins ) do
-    local r, b = require( "amalg."..p[ 1 ]..".deflate" )( s, not is_bin, path )
-    s, is_bin = r, (is_bin or not b)
+    if p[ 2 ] then
+      local r, b = require( "amalg."..p[ 1 ].."."..p[ 2 ] )( s, not is_bin, path )
+      s, is_bin = r, (is_bin or not b)
+    end
   end
   return s, is_bin, shebang
 end
@@ -452,8 +454,8 @@ end
 local function open_inflate_calls( plugins )
   local s = ""
   for _, p in ipairs( plugins ) do
-    if p[ 2 ] then
-      s = s.." require( "..qformat( "amalg."..p[ 1 ]..".inflate" ).." )("
+    if p[ 3 ] then
+      s = s.." require( "..qformat( "amalg."..p[ 1 ].."."..p[ 3 ] ).." )("
     end
   end
   return s
@@ -465,7 +467,7 @@ end
 local function close_inflate_calls( plugins )
   local cnt = 0
   for _, p in ipairs( plugins ) do
-    if p[ 2 ] then cnt = cnt + 1 end
+    if p[ 3 ] then cnt = cnt + 1 end
   end
   return (" )"):rep( cnt )
 end
@@ -483,7 +485,7 @@ local function writeluamodule( out, m, path, plugins, tname, dbg, afix )
     -- (`-d` command line option).
     out:write( "package.", tname, "[ ", qformat( m ),
                " ] = assert( (loadstring or load)(",
-               open_inflate_calls( plugins ), "\n",
+               open_inflate_calls( plugins ), " ",
                qformat( bytes ), close_inflate_calls( plugins ),
                ", '@'..", qformat( path ), " ) )\n\n" )
   else
@@ -585,8 +587,8 @@ end
   -- have already been loaded.
   local active_plugins = {}
   for _,plugin in ipairs( plugins ) do
-    if plugin[ 2 ] then
-      local m = "amalg."..plugin[ 1 ]..".inflate"
+    if plugin[ 3 ] then
+      local m = "amalg."..plugin[ 1 ].."."..plugin[ 3 ]
       local path, msg  = searchpath( m, package.path )
       if not path then
         error( "module `"..m.."' not found:"..msg )
@@ -769,7 +771,7 @@ do
   if script then
     if script_binary or dbg then
       out:write( "assert( (loadstring or load)(",
-                 open_inflate_calls( plugins ), "\n",
+                 open_inflate_calls( plugins ), " ",
                  qformat( script_bytes ),
                  close_inflate_calls( plugins ),
                  ", '@'..", qformat( script ), " ) )( ... )\n\n" )

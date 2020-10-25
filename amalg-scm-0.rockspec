@@ -20,10 +20,8 @@ build = {
   type = "builtin",
   modules = {
     amalg = "src/amalg.lua",
-    ["amalg.luac.inflate"] = "src/amalg/luac/inflate.lua",
-    ["amalg.luac.deflate"] = "src/amalg/luac/deflate.lua",
-    ["amalg.luasrcdiet.inflate"] = "src/amalg/luasrcdiet/inflate.lua",
-    ["amalg.luasrcdiet.deflate"] = "src/amalg/luasrcdiet/deflate.lua",
+    ["amalg.luac.transform"] = "src/amalg/luac/transform.lua",
+    ["amalg.luasrcdiet.transform"] = "src/amalg/luasrcdiet/transform.lua",
     ["amalg.zlib.inflate"] = "src/amalg/zlib/inflate.lua",
     ["amalg.zlib.deflate"] = "src/amalg/zlib/deflate.lua",
   },

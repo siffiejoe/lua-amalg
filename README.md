@@ -132,6 +132,13 @@ embedded in the result and executed automatically.
 
     ./amalg.lua -o out.lua -s main.lua -c -z luac -z zlib
 
+Some plugin generate valid Lua code (text or binary) and thus don't
+need a decompression step. For those modules the `-t` option should be
+used instead to avoid embedding no-op decompression code in the final
+amalgamation file.
+
+    ./amalg.lua -o out.lua -s main.lua -c -t luasrcdiet -t luac -z zlib
+
 That's it. For further info consult the source (there's a nice
 [annotated HTML file][6] rendered with [Docco][7] on the GitHub
 pages). Have fun!

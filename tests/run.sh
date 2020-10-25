@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 
 LUAV=$1
 if [ x"$1" != x5.1 -a x"$1" != x5.2 -a x"$1" != x5.3 -a x"$1" != x5.4 ]; then
@@ -36,9 +36,13 @@ echo -n "amalgamate modules and script in binary form ... "
 lua$LUAV -e 'package.path = "./?.luac;"..package.path' ../src/amalg.lua -o binout.lua -s main.lua module1 module2
 lua$LUAV binout.lua
 
-echo -n "amalgamate and transform modules and script ... "
+echo -n "amalgamate and transform modules and script(1) ... "
 lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o zippedout.lua -s main.lua -z luac -z zlib module1 module2
 lua$LUAV zippedout.lua
+
+echo -n "amalgamate and transform modules and script(2) ... "
+lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o dietout.lua -s main.lua -z luasrcdiet module1 module2
+lua$LUAV dietout.lua
 
 echo -n "amalgamate modules and script without arg fix ... "
 lua$LUAV ../src/amalg.lua -o afixout.lua -a -s main.lua module1 module2
@@ -64,5 +68,5 @@ lua$LUAV ignout.lua
 
 exit 0
 
-rm -f module1.luac module2.luac modules.lua fallbacks.lua textout.lua binout.lua zippedout.lua afixout.lua debugout.lua cacheout.lua cmodout.lua ignout.lua amalg.cache cmod.so aiomod.so
+rm -f module1.luac module2.luac modules.lua fallbacks.lua textout.lua binout.lua zippedout.lua dietout.lua afixout.lua debugout.lua cacheout.lua cmodout.lua ignout.lua amalg.cache cmod.so aiomod.so
 

@@ -13,7 +13,7 @@ local options = {
 }
 
 return function( s, is_text )
-  assert( is_text, "amalg.luasrcdiet.deflate requires Lua code as input" )
+  assert( is_text, "amalg.luasrcdiet.transform requires Lua code as input" )
   return luasrcdiet.optimize( options, s ), true
 end
 

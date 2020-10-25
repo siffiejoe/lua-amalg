@@ -466,7 +466,7 @@ local function writeluamodule( out, m, path, plugins, tname, dbg, afix )
                "package.", tname, "[ ", qformat( m ),
                " ] = function( ... ) ",
                afix and "local arg = _G.arg;\n" or "_ENV = _ENV;\n",
-               bytes, "\nend\nend\n\n" )
+               bytes:gsub( "%s*$", "" ), "\nend\nend\n\n" )
   end
 end
 
@@ -515,7 +515,6 @@ local function amalgamate( ... )
     if shebang then
       out:write( shebang, "\n\n" )
     end
-    out:write( "do\n\n" )
   end
 
   -- If fallback loading is requested, the module loaders of the
@@ -604,35 +603,36 @@ end
     -- path by default. If that's the case the value of the `TMP`
     -- environment variable is prepended to make it absolute.
     local prefix = [=[
-local assert = assert
-local newproxy = newproxy
-local getmetatable = assert( getmetatable )
-local setmetatable = assert( setmetatable )
-local os_tmpname = assert( os.tmpname )
-local os_getenv = assert( os.getenv )
-local os_remove = assert( os.remove )
-local io_open = assert( io.open )
-local string_match = assert( string.match )
-local string_sub = assert( string.sub )
-local package_loadlib = assert( package.loadlib )
+do
+  local assert = assert
+  local newproxy = newproxy
+  local getmetatable = assert( getmetatable )
+  local setmetatable = assert( setmetatable )
+  local os_tmpname = assert( os.tmpname )
+  local os_getenv = assert( os.getenv )
+  local os_remove = assert( os.remove )
+  local io_open = assert( io.open )
+  local string_match = assert( string.match )
+  local string_sub = assert( string.sub )
+  local package_loadlib = assert( package.loadlib )
 
-local dirsep = package.config:match( "^([^\n]+)" )
-local tmpdir
-local function newdllname()
-  local tmpname = assert( os_tmpname() )
-  if dirsep == "\\" then
-    if not string_match( tmpname, "[\\/][^\\/]+[\\/]" ) then
-      tmpdir = tmpdir or assert( os_getenv( "TMP" ) or
-                                 os_getenv( "TEMP" ),
-                                 "could not detect temp directory" )
-      local first = string_sub( tmpname, 1, 1 )
-      local hassep = first == "\\" or first == "/"
-      tmpname = tmpdir..((hassep) and "" or "\\")..tmpname
+  local dirsep = package.config:match( "^([^\n]+)" )
+  local tmpdir
+  local function newdllname()
+    local tmpname = assert( os_tmpname() )
+    if dirsep == "\\" then
+      if not string_match( tmpname, "[\\/][^\\/]+[\\/]" ) then
+        tmpdir = tmpdir or assert( os_getenv( "TMP" ) or
+                                   os_getenv( "TEMP" ),
+                                   "could not detect temp directory" )
+        local first = string_sub( tmpname, 1, 1 )
+        local hassep = first == "\\" or first == "/"
+        tmpname = tmpdir..((hassep) and "" or "\\")..tmpname
+      end
     end
+    return tmpname
   end
-  return tmpname
-end
-local dllnames = {}
+  local dllnames = {}
 
 ]=]
     for _,m in ipairs( module_names ) do
@@ -679,20 +679,20 @@ local dllnames = {}
           local code = readfile( path, true )
           nfuncs[ path ] = true
           local qcode = qformat( code )
-          out:write( prefix, "dllnames[ ", qpath, [=[ ] = function()
-  local dll = newdllname()
-  local f = assert( io_open( dll, "wb" ) )
-  f:write( ]=], qcode, [=[ )
-  f:close()
-  local sentinel = newproxy and newproxy( true )
-                            or setmetatable( {}, { __gc = true } )
-  getmetatable( sentinel ).__gc = function() os_remove( dll ) end
-  dllnames[ ]=], qpath, [=[ ] = function()
-    local _ = sentinel
+          out:write( prefix, "  dllnames[ ", qpath, [=[ ] = function()
+    local dll = newdllname()
+    local f = assert( io_open( dll, "wb" ) )
+    f:write( ]=], qcode, [=[ )
+    f:close()
+    local sentinel = newproxy and newproxy( true )
+                              or setmetatable( {}, { __gc = true } )
+    getmetatable( sentinel ).__gc = function() os_remove( dll ) end
+    dllnames[ ]=], qpath, [=[ ] = function()
+      local _ = sentinel
+      return dll
+    end
     return dll
   end
-  return dll
-end
 
 ]=] )
           prefix = ""
@@ -703,29 +703,31 @@ end
         -- from the module name at the end first, and then at the
         -- beginning if that failed.
         local qm = qformat( m )
-        out:write( "package.", tname, "[ ", qm, " ] = function()\n",
-                   "  local dll = dllnames[ ", qpath, " ]()\n" )
+        out:write( "  package.", tname, "[ ", qm, " ] = function()\n",
+                   "    local dll = dllnames[ ", qpath, " ]()\n" )
         if openf1 then
-          out:write( "  local loader = package_loadlib( dll, ",
+          out:write( "    local loader = package_loadlib( dll, ",
                      qformat( "luaopen_"..openf1 ), " )\n",
-                     "  if not loader then\n",
-                     "    loader = assert( package_loadlib( dll, ",
+                     "    if not loader then\n",
+                     "      loader = assert( package_loadlib( dll, ",
                      qformat( "luaopen_"..openf2 ),
-                     " ) )\n  end\n" )
+                     " ) )\n    end\n" )
         else
-          out:write( "  local loader = assert( package_loadlib( dll, ",
+          out:write( "    local loader = assert( package_loadlib( dll, ",
                      qformat( "luaopen_"..openf ), " ) )\n" )
         end
-        out:write( "  return loader( ", qm, ", dll )\nend\n\n" )
+        out:write( "    return loader( ", qm, ", dll )\n  end\n\n" )
       end -- is a C module
     end -- for all given module names
+    if prefix == "" then
+      out:write( "end\n\n" )
+    end
   end -- if cmods
 
   -- If a main script is specified on the command line (`-s` flag),
   -- embed it now that all dependent modules are available to
   -- `require`.
   if script then
-    out:write( "end\n\n" )
     if script_binary or dbg then
       out:write( "assert( (loadstring or load)(",
                  add_inflate_calls( plugins ), "\n",

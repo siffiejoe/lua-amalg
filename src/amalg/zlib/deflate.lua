@@ -23,7 +23,7 @@ end
 local libdeflate_ok, libdeflate = pcall( require, "LibDeflate" )
 if libdeflate_ok then
   return function( s )
-    return libdeflate:CompressDeflate( s )
+    return libdeflate:CompressDeflate( s ), false
   end
 end
 

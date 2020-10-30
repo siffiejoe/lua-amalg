@@ -136,14 +136,14 @@
 -- are executed in the given order. The necessary decompression code
 -- is embedded in the result and executed automatically.
 --
---     ./amalg.lua -o out.lua -s main.lua -c -z luac -z zlib
+--     ./amalg.lua -o out.lua -s main.lua -c -z luac -z brieflz
 --
 -- Some plugins generate valid Lua code (text or binary) and thus
 -- don't need a decompression step. For those modules the `-t` option
 -- should be used instead to reduce dead code in the resulting
 -- amalgamation file.
 --
---     ./amalg.lua -o out.lua -s main.lua -c -t luasrcdiet -t luac -z zlib
+--     ./amalg.lua -o out.lua -s main.lua -c -t luasrcdiet -t luac -z brieflz
 --
 -- That's it. For further info consult the source.
 --

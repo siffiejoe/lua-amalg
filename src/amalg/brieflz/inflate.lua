@@ -1,22 +1,20 @@
-local assert = assert -- cached for efficiency reasons
-local errormsg = "brieflz decompression error"
+local assert, errormsg, MAX = assert, "brieflz decompression error", 32
+local compact, append, getbit, getgamma
 
-local MAX = 32
-
-local function compact( buffer, n, max )
+function compact( buffer, n, max )
   if n > (max or 1) then
     buffer[ 1 ], n = table.concat( buffer, "", 1, n ), 1
   end
   return buffer, n
 end
 
-local function append( buffer, n, s )
+function append( buffer, n, s )
   n = n + 1
   buffer[ n ] = s
   return compact( buffer, n, MAX )
 end
 
-local function getbit( s, index, tag, bits )
+function getbit( s, index, tag, bits )
   if bits == 0 then
     local byte0, byte1 = s:byte(index, index + 1)
     assert( byte1, errormsg )
@@ -27,7 +25,7 @@ local function getbit( s, index, tag, bits )
   return bit, index, 2 * tag - 65536 * bit, bits - 1
 end
 
-local function getgamma( s, index, tag, bits )
+function getgamma( s, index, tag, bits )
   local v, bit = 1, nil
   repeat
     bit, index, tag, bits = getbit( s, index, tag, bits )
@@ -39,12 +37,10 @@ local function getgamma( s, index, tag, bits )
 end
 
 return function( s )
-  local index, tag, bits, bit =  1, 0, 1, nil
-  local buffer, n = { "" }, 1
+  local index, tag, bits, buffer, n, bit, len, off, c =  1, 0, 1, { "" }, 1
   while index <= #s do
     bit, index, tag, bits = getbit( s, index, tag, bits )
     if bit > 0 then
-      local len, off
       len, index, tag, bits = getgamma( s, index, tag, bits )
       off, index, tag, bits = getgamma( s, index, tag, bits )
       len, off = len + 2, off - 2
@@ -53,7 +49,7 @@ return function( s )
       if off > #buffer[n] then buffer, n = compact( buffer, n ) end
       assert( off <= #buffer[ n ], errormsg )
       while len > 0 do -- copy match
-        local c = buffer[ n ]:sub( -off, #buffer[ n ]-off+len )
+        c = buffer[ n ]:sub( -off, #buffer[ n ]-off+len )
         buffer, n = append( buffer, n, c )
         len, off = len - #c, #c
       end

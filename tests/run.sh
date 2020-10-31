@@ -44,6 +44,11 @@ echo -n "amalgamate and transform modules and script(2) ... "
 lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o dietout.lua -s main.lua -t luasrcdiet module1 module2 && \
 lua$LUAV dietout.lua
 
+echo -n "amalgamate and transform in two steps ... "
+lua$LUAV ../src/amalg.lua -o- -s main.lua module1 module2 | \
+lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o twosteps.lua -s- -t luasrcdiet -z brieflz && \
+lua$LUAV twosteps.lua
+
 echo -n "amalgamate modules and script without arg fix ... "
 lua$LUAV ../src/amalg.lua -o afixout.lua -a -s main.lua module1 module2
 lua$LUAV afixout.lua
@@ -68,5 +73,5 @@ lua$LUAV ignout.lua
 
 exit 0
 
-rm -f module1.luac module2.luac modules.lua fallbacks.lua textout.lua binout.lua zippedout.lua dietout.lua afixout.lua debugout.lua cacheout.lua cmodout.lua ignout.lua amalg.cache cmod.so aiomod.so
+rm -f module1.luac module2.luac modules.lua fallbacks.lua textout.lua binout.lua zippedout.lua twosteps.lua dietout.lua afixout.lua debugout.lua cacheout.lua cmodout.lua ignout.lua amalg.cache cmod.so aiomod.so
 

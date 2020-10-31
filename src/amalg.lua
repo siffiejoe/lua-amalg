@@ -356,9 +356,16 @@ end
 -- Lua file and returns the contents as a Lua string. If there are
 -- compression/transformation plugins specified, the deflate parts of
 -- those plugins are executed on the file contents in the given order.
-local function readluafile( path, plugins )
-  local is_bin = is_bytecode( path )
-  local s = readfile( path, is_bin )
+local function readluafile( path, plugins, stdin_allowed )
+  local is_bin, s
+  if stdin_allowed and path == "-" then
+    s = assert( io.read( "*a" ) )
+    is_bin = s:sub( 1, 1 ) == "\027"
+    path = "<stdin>"
+  else
+    is_bin = is_bytecode( path )
+    s = readfile( path, is_bin )
+  end
   local shebang
   if not is_bin then
     -- Shebang lines are only supported by Lua at the very beginning
@@ -539,7 +546,7 @@ local function amalgamate( ... )
   end
 
   local out = io.stdout
-  if oname then
+  if oname and oname ~= "-" then
     out = assert( io.open( oname, "w" ) )
   end
 
@@ -550,7 +557,7 @@ local function amalgamate( ... )
   -- line was specified in the first place, that is).
   local script_bytes, script_binary, shebang
   if script then
-    script_bytes, script_binary, shebang = readluafile( script, plugins )
+    script_bytes, script_binary, shebang = readluafile( script, plugins, true )
     if shebang then
       out:write( shebang, "\n\n" )
     end
@@ -770,6 +777,7 @@ do
   -- `require`.
   if script then
     if script_binary or dbg then
+      if script == "-" then script = "<stdin>" end
       out:write( "assert( (loadstring or load)(",
                  open_inflate_calls( plugins ), " ",
                  qformat( script_bytes ),
@@ -780,7 +788,7 @@ do
     end
   end
 
-  if oname then
+  if oname and oname ~= "-" then
     out:close()
   end
 end

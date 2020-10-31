@@ -147,6 +147,78 @@ pages). Have fun!
   [7]: http://jashkenas.github.io/docco/
 
 
+##                              Plugins                             ##
+
+`amalg.lua` uses two kinds of plugins: transformation plugins and
+compression plugins. Transformation plugins are Lua modules that are
+called only during amalgamation. Compression plugins consist of two
+separate Lua modules that are called during amalgamation and at
+runtime to undo the modifications made during amalgamation. Since
+transformation plugins don't have a reverse transformation step, they
+are expected to produce valid Lua code (or Lua binary code). They are
+used only on pure Lua files (modules or main script). Compression
+plugins on the other hand are used on both Lua files and on compiled C
+modules.
+
+A transformation plugin (used with the command line option `-t
+<name>`) is implemented as a Lua module `amalg.<name>.transform`. The
+Lua module exports a function that takes a string (the input source),
+a boolean (whether the input source is in Lua source code format), and
+the original file path as arguments. It must return a string (the
+transformed input) and a boolean indicating whether the result is Lua
+source code.
+
+A compression plugin (used with the command line option `-z <name>`)
+is implemented as two separate Lua modules `amalg.<name>.deflate` and
+`amalg.<name>.inflate`. The deflate part of the plugin works exactly
+like a transformation plugin module. It is called during amalgamation
+and may freely use external dependencies. The inflate module should be
+implemented as a self-contained pure Lua module as it is embedded into
+the amalgamation for the decompression step during runtime. The module
+exports a function taking the compressed input as a string and
+returning the decompressed output as string as well.
+
+There are currently three predefined plugins available:
+
+###                           luac Plugin                          ###
+
+The `luac` plugin is a transformation plugin that compiles Lua source
+code into stripped Lua binary code. It doesn't have any external
+dependencies and passes through binary input (i.e. already compiled
+Lua code) unmodified.
+
+###                        luasrcdiet Plugin                       ###
+
+The `luasrcdiet` plugin is a transformation plugin that minifies Lua
+source code by replacing names of local variables, stripping white
+space, removing comments, etc. It passes through binary input (i.e.
+already compile Lua code) unmodified. You need to install the
+[luasrcdiet][8] module for the amalgamation step. The amalgamated
+script doesn't have any extra dependencies. This transformation is a
+good choice for reducing the size of the resulting amalgamated Lua
+script.
+
+  [8]: https://luarocks.org/modules/jirutka/luasrcdiet
+
+###                         brieflz Plugin                         ###
+
+The `brieflz` plugin is a compression plugin that compresses its input
+during amalgamation and decompresses it on the fly during runtime. The
+compression step relies on the [brieflz][9] module which must be
+installed during amalgamation. The decompression step is performed by
+a pure Lua port of the `blz_depack_safe` function from the
+[original C code][10] by Jørgen Ibsen (@jibsen). The decompression
+code is embedded into the resulting amalgamation script, so no extra
+dependency is needed at runtime, but it adds about 2kB (1kB when
+minified with `luasrcdiet`) size overhead. Note that binary data in
+the amalgamation is stored in standard Lua decimal escape notation, so
+it may be larger than usual. However, brieflz compression still
+reduces the size of the resulting amalgamation script in many cases.
+
+  [9]: https://luarocks.org/modules/jirutka/brieflz
+  [10]: https://github.com/jibsen/brieflz
+
+
 ##                              Contact                             ##
 
 Philipp Janda, siffiejoe(a)gmx.net

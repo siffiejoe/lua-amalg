@@ -1,6 +1,9 @@
 return function( s, is_text, path )
-  assert( is_text, "amalg.luac.transform requires Lua code as input" )
-  local chunk = assert( (loadstring or load)( s, '@' .. path ) )
-  return string.dump( chunk, true ), false
+  if is_text then
+    local chunk = assert( (loadstring or load)( s, '@' .. path ) )
+    return string.dump( chunk, true ), false
+  else
+    return s, false
+  end
 end
 

@@ -13,7 +13,6 @@ local options = {
 }
 
 return function( s, is_text )
-  assert( is_text, "amalg.luasrcdiet.transform requires Lua code as input" )
-  return luasrcdiet.optimize( options, s ), true
+  return is_text and luasrcdiet.optimize( options, s ) or s, is_text
 end
 

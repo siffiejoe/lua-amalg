@@ -668,6 +668,7 @@ end
 do
   local assert = assert
   local newproxy = newproxy
+  local require = assert( require )
   local getmetatable = assert( getmetatable )
   local setmetatable = assert( setmetatable )
   local os_tmpname = assert( os.tmpname )
@@ -679,22 +680,34 @@ do
   local package_loadlib = assert( package.loadlib )
 
   local dirsep = package.config:match( "^([^\n]+)" )
-  local tmpdir
-  local function newdllname()
-    local tmpname = assert( os_tmpname() )
-    if dirsep == "\\" then
-      if not string_match( tmpname, "[\\/][^\\/]+[\\/]" ) then
-        tmpdir = tmpdir or assert( os_getenv( "TMP" ) or
-                                   os_getenv( "TEMP" ),
-                                   "could not detect temp directory" )
-        local first = string_sub( tmpname, 1, 1 )
-        local hassep = first == "\\" or first == "/"
-        tmpname = tmpdir..((hassep) and "" or "\\")..tmpname
+  local dlls, tmpdir = {}
+  local function newdll( name, code )
+    return function()
+      local tmpname = assert( os_tmpname() )
+      if dirsep == "\\" then
+        if not string_match( tmpname, "[\\/][^\\/]+[\\/]" ) then
+          tmpdir = tmpdir or assert( os_getenv( "TMP" ) or
+                                     os_getenv( "TEMP" ),
+                                     "could not detect temp directory" )
+          local first = string_sub( tmpname, 1, 1 )
+          local hassep = first == "\\" or first == "/"
+          tmpname = tmpdir..((hassep) and "" or "\\")..tmpname
+        end
       end
+      local f = assert( io_open( tmpname, "wb" ) )
+      f:write(]=] .. open_inflate_calls( plugins ).." code"..
+      close_inflate_calls( plugins )..[=[ )
+      f:close()
+      local sentinel = newproxy and newproxy( true )
+                                or setmetatable( {}, { __gc = true } )
+      getmetatable( sentinel ).__gc = function() os_remove( tmpname ) end
+      dlls[ name ] = function()
+        local _ = sentinel
+        return tmpname
+      end
+      return tmpname
     end
-    return tmpname
   end
-  local dllnames = {}
 ]=]
     for _,m in ipairs( module_names ) do
       local t = modules[ m ]
@@ -740,22 +753,8 @@ do
           local code = readdllfile( path, plugins )
           nfuncs[ path ] = true
           local qcode = qformat( code )
-          out:write( prefix, "\n  dllnames[ ", qpath, [=[ ] = function()
-    local dll = newdllname()
-    local f = assert( io_open( dll, "wb" ) )
-    f:write(]=], open_inflate_calls( plugins ), " ", qcode,
-    close_inflate_calls( plugins ), [=[ )
-    f:close()
-    local sentinel = newproxy and newproxy( true )
-                              or setmetatable( {}, { __gc = true } )
-    getmetatable( sentinel ).__gc = function() os_remove( dll ) end
-    dllnames[ ]=], qpath, [=[ ] = function()
-      local _ = sentinel
-      return dll
-    end
-    return dll
-  end
-]=] )
+          out:write( prefix, "\n  dlls[ ", qpath, " ] = newdll( ",
+                             qpath, ", ", qcode, " )\n" )
           prefix = ""
         end -- shared libary not embedded already
         -- Adds a function to `package.preload` to load the temporary
@@ -765,7 +764,7 @@ do
         -- beginning if that failed.
         local qm = qformat( m )
         out:write( "\n  package.", tname, "[ ", qm, " ] = function()\n",
-                   "    local dll = dllnames[ ", qpath, " ]()\n" )
+                   "    local dll = dlls[ ", qpath, " ]()\n" )
         if openf1 then
           out:write( "    local loader = package_loadlib( dll, ",
                      qformat( "luaopen_"..openf1 ), " )\n",

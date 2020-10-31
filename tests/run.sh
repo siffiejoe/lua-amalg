@@ -67,11 +67,20 @@ echo -n "amalgamate Lua modules, Lua script and C modules ... "
 lua$LUAV ../src/amalg.lua -o cmodout.lua -s main.lua -c -x
 lua$LUAV -e 'package.cpath = ""' cmodout.lua
 
+echo -n "amalgamate Lua modules, Lua script and C modules compressed ... "
+lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o zipcmodout.lua -s main.lua -c -x -t luasrcdiet -z brieflz && \
+lua$LUAV -e 'package.cpath = ""' zipcmodout.lua
+
+echo -n "amalgamate Lua modules, Lua script and C modules in two steps ... "
+lua$LUAV ../src/amalg.lua -o- -s main.lua -c -x | \
+lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o ctwosteps.lua -s- -t luasrcdiet -z brieflz && \
+lua$LUAV -e 'package.cpath = ""' ctwosteps.lua
+
 echo -n "amalgamate Lua modules, but ignore C modules ... "
 lua$LUAV ../src/amalg.lua -o ignout.lua -s main.lua -c -x -i '^cmod' -i '^aiomod'
 lua$LUAV ignout.lua
 
 exit 0
 
-rm -f module1.luac module2.luac modules.lua fallbacks.lua textout.lua binout.lua zippedout.lua twosteps.lua dietout.lua afixout.lua debugout.lua cacheout.lua cmodout.lua ignout.lua amalg.cache cmod.so aiomod.so
+rm -f module1.luac module2.luac modules.lua fallbacks.lua textout.lua binout.lua zippedout.lua twosteps.lua dietout.lua afixout.lua debugout.lua cacheout.lua cmodout.lua zipcmodout.lua ctwosteps.lua ignout.lua amalg.cache cmod.so aiomod.so
 

@@ -384,6 +384,20 @@ local function readluafile( path, plugins, stdin_allowed )
 end
 
 
+-- C extension modules may be embedded into the the amalgamated script
+-- as well. Compression/decompression plugins are applied as well,
+-- transformation plugins are skipped.
+local function readdllfile( path, plugins )
+  local s = readfile( path, true )
+  for _, p in ipairs( plugins ) do
+    if p[ 2 ] and p[ 3 ] then
+      s = require( "amalg."..p[ 1 ].."."..p[ 2 ] )( s, false, path )
+    end
+  end
+  return s
+end
+
+
 -- Lua 5.1's `string.format("%q")` doesn't convert all control
 -- characters to decimal escape sequences like the newer Lua versions
 -- do. This might cause problems on some platforms (i.e. Windows) when
@@ -681,7 +695,6 @@ do
     return tmpname
   end
   local dllnames = {}
-
 ]=]
     for _,m in ipairs( module_names ) do
       local t = modules[ m ]
@@ -724,13 +737,14 @@ do
         -- temporary library files *before* they are actually
         -- unloaded.
         if not nfuncs[ path ] then
-          local code = readfile( path, true )
+          local code = readdllfile( path, plugins )
           nfuncs[ path ] = true
           local qcode = qformat( code )
-          out:write( prefix, "  dllnames[ ", qpath, [=[ ] = function()
+          out:write( prefix, "\n  dllnames[ ", qpath, [=[ ] = function()
     local dll = newdllname()
     local f = assert( io_open( dll, "wb" ) )
-    f:write( ]=], qcode, [=[ )
+    f:write(]=], open_inflate_calls( plugins ), " ", qcode,
+    close_inflate_calls( plugins ), [=[ )
     f:close()
     local sentinel = newproxy and newproxy( true )
                               or setmetatable( {}, { __gc = true } )
@@ -741,7 +755,6 @@ do
     end
     return dll
   end
-
 ]=] )
           prefix = ""
         end -- shared libary not embedded already
@@ -751,7 +764,7 @@ do
         -- from the module name at the end first, and then at the
         -- beginning if that failed.
         local qm = qformat( m )
-        out:write( "  package.", tname, "[ ", qm, " ] = function()\n",
+        out:write( "\n  package.", tname, "[ ", qm, " ] = function()\n",
                    "    local dll = dllnames[ ", qpath, " ]()\n" )
         if openf1 then
           out:write( "    local loader = package_loadlib( dll, ",
@@ -764,7 +777,7 @@ do
           out:write( "    local loader = assert( package_loadlib( dll, ",
                      qformat( "luaopen_"..openf ), " ) )\n" )
         end
-        out:write( "    return loader( ", qm, ", dll )\n  end\n\n" )
+        out:write( "    return loader( ", qm, ", dll )\n  end\n" )
       end -- is a C module
     end -- for all given module names
     if prefix == "" then

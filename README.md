@@ -153,20 +153,22 @@ pages). Have fun!
 compression plugins. Transformation plugins are Lua modules that are
 called only during amalgamation. Compression plugins consist of two
 separate Lua modules that are called during amalgamation and at
-runtime to undo the modifications made during amalgamation. Since
-transformation plugins don't have a reverse transformation step, they
-are expected to produce valid Lua code (or Lua binary code). They are
-used only on pure Lua files (modules or main script). Compression
-plugins on the other hand are used on both Lua files and on compiled C
-modules.
+runtime to undo the modifications made during amalgamation,
+respectively. Since transformation plugins don't have a reverse
+transformation step, they are expected to produce valid Lua code (or
+Lua binary code). They are used only on pure Lua files (modules or
+main script). Compression plugins on the other hand are used on both
+Lua files and compiled C modules.
 
 A transformation plugin (used with the command line option `-t
 <name>`) is implemented as a Lua module `amalg.<name>.transform`. The
-Lua module exports a function that takes a string (the input source),
-a boolean (whether the input source is in Lua source code format), and
+module exports a function that takes a string (the input source), a
+boolean (whether the input source is in Lua source code format), and
 the original file path as arguments. It must return a string (the
 transformed input) and a boolean indicating whether the result is Lua
-source code.
+source code. It is good practice to handle the case where the input is
+not in Lua source code format (but Lua binary code) by skipping the
+transformation in this case.
 
 A compression plugin (used with the command line option `-z <name>`)
 is implemented as two separate Lua modules `amalg.<name>.deflate` and
@@ -174,8 +176,8 @@ is implemented as two separate Lua modules `amalg.<name>.deflate` and
 like a transformation plugin module. It is called during amalgamation
 and may freely use external dependencies. The inflate module should be
 implemented as a self-contained pure Lua module as it is embedded into
-the amalgamation for the decompression step during runtime. The module
-exports a function taking the compressed input as a string and
+the amalgamation for the decompression step during runtime. This
+module exports a function taking the compressed input as a string and
 returning the decompressed output as string as well.
 
 There are currently three predefined plugins available:

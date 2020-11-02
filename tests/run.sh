@@ -1,11 +1,15 @@
 #!/bin/bash
 
 LUAV=$1
-if [ x"$1" != x5.1 -a x"$1" != x5.2 -a x"$1" != x5.3 -a x"$1" != x5.4 ]; then
+if [ "$1" != 5.1 -a "$1" != 5.2 -a "$1" != 5.3 -a "$1" != 5.4 -a "$1" != "gh" ]; then
   LUAV=5.1
 fi
 
-if [ "$LUAV" == 5.4 ]; then
+if [ "$LUAV" == "gh" ]; then
+  LUAV=""
+  INC=.lua/include
+  set -e
+elif [ "$LUAV" == 5.4 ]; then
   INC=/home/siffiejoe/.self/programs/lua$LUAV
 else
   INC=/usr/include/lua$LUAV

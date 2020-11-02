@@ -7,7 +7,7 @@ fi
 
 if [ "$LUAV" == "gh" ]; then
   LUAV=""
-  INC=.lua/include
+  INC=../.lua/include
   set -e
 elif [ "$LUAV" == 5.4 ]; then
   INC=/home/siffiejoe/.self/programs/lua$LUAV

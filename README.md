@@ -11,13 +11,14 @@ a single file is a valuable help. This is such a tool.
 Features:
 
 *   Pure Lua (compatible with Lua 5.1 and up), no other external
-    dependencies. (Even works for modules using the deprecated
-    `module` function.)
+    dependencies.
+*   Even works for modules using the deprecated `module` function.
 *   You don't have to take care of the order in which the modules are
     `require`'d.
 *   Can embed compiled C modules.
 *   Can collect `require`'d Lua (and C) modules automatically.
 *   Can compress/decompress or precompile using plugin modules.
+    (Plugin modules may have dependencies to external Lua modules!)
 
 What it doesn't do:
 
@@ -196,7 +197,7 @@ Lua code) unmodified.
 The `luasrcdiet` plugin is a transformation plugin that minifies Lua
 source code by replacing names of local variables, stripping white
 space, removing comments, etc. It passes through binary input (i.e.
-already compile Lua code) unmodified. You need to install the
+already compiled Lua code) unmodified. You need to install the
 [luasrcdiet][8] module for the amalgamation step. The amalgamated
 script doesn't have any extra dependencies. This transformation is a
 good choice for reducing the size of the resulting amalgamated Lua

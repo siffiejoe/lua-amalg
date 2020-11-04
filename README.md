@@ -142,6 +142,11 @@ amalgamation file.
 
     ./amalg.lua -o out.lua -s main.lua -c -t luasrcdiet -t luac -z brieflz
 
+Note that compression is usually most effective when applied to the
+complete amalgamation script instead of just individual modules:
+
+    ./amalg.lua -s main.lua -c | ./amalg.lua -o out.lua -s- -t luasrcdiet -z brieflz
+
 That's it. For further info consult the source (there's a nice
 [annotated HTML file][6] rendered with [Docco][7] on the GitHub
 pages). Have fun!
@@ -190,7 +195,10 @@ There are currently three predefined plugins available:
 The `luac` plugin is a transformation plugin that compiles Lua source
 code into stripped Lua binary code. It doesn't have any external
 dependencies and passes through binary input (i.e. already compiled
-Lua code) unmodified.
+Lua code) unmodified. Note that binary Lua code may be larger than Lua
+source code, especially when encoded in Lua's decimal escape notation.
+Binary Lua code is also platform dependent. It may or may not load
+faster than regular Lua source code.
 
 ###                        luasrcdiet Plugin                       ###
 

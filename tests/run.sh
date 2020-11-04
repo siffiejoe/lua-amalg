@@ -34,55 +34,55 @@ lua$LUAV -l fallbacks -e "package.path=''" main.lua
 
 echo -n "amalgamate modules and script in text form ... "
 lua$LUAV ../src/amalg.lua -o textout.lua -s main.lua module1 module2
-lua$LUAV textout.lua
+lua$LUAV -e 'package.path=""' textout.lua
 
 echo -n "amalgamate modules and script in binary form ... "
 lua$LUAV -e 'package.path = "./?.luac;"..package.path' ../src/amalg.lua -o binout.lua -s main.lua module1 module2
-lua$LUAV binout.lua
+lua$LUAV -e 'package.path=""' binout.lua
 
 echo -n "amalgamate and transform modules and script(1) ... "
 lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o zippedout.lua -s main.lua -t luac -z brieflz module1 module2 && \
-lua$LUAV zippedout.lua
+lua$LUAV -e 'package.path=""' zippedout.lua
 
 echo -n "amalgamate and transform modules and script(2) ... "
 lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o dietout.lua -s main.lua -t luasrcdiet module1 module2 && \
-lua$LUAV dietout.lua
+lua$LUAV -e 'package.path=""' dietout.lua
 
 echo -n "amalgamate and transform in two steps ... "
 lua$LUAV ../src/amalg.lua -o- -s main.lua module1 module2 | \
 lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o twosteps.lua -s- -t luasrcdiet -z brieflz && \
-lua$LUAV twosteps.lua
+lua$LUAV -e 'package.path=""' twosteps.lua
 
 echo -n "amalgamate modules and script without arg fix ... "
 lua$LUAV ../src/amalg.lua -o afixout.lua -a -s main.lua module1 module2
-lua$LUAV afixout.lua
+lua$LUAV -e 'package.path=""' afixout.lua
 
 echo -n "amalgamate modules and script with debug info ... "
 lua$LUAV ../src/amalg.lua -o debugout.lua -d -s main.lua module1 module2
-lua$LUAV debugout.lua
+lua$LUAV -e 'package.path=""' debugout.lua
 
 echo -n "collect module names using amalg.lua as a module ... "
 lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' -l amalg main.lua
 echo -n "amalgamate modules and script using amalg.cache ... "
 lua$LUAV ../src/amalg.lua -o cacheout.lua -s main.lua -c
-lua$LUAV cacheout.lua
+lua$LUAV -e 'package.path=""' cacheout.lua
 
 echo -n "amalgamate Lua modules, Lua script and C modules ... "
 lua$LUAV ../src/amalg.lua -o cmodout.lua -s main.lua -c -x
-lua$LUAV -e 'package.cpath = ""' cmodout.lua
+lua$LUAV -e 'package.path,package.cpath="",""' cmodout.lua
 
 echo -n "amalgamate Lua modules, Lua script and C modules compressed ... "
 lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o zipcmodout.lua -s main.lua -c -x -t luasrcdiet -z brieflz && \
-lua$LUAV -e 'package.cpath = ""' zipcmodout.lua
+lua$LUAV -e 'package.path,package.cpath="",""' zipcmodout.lua
 
 echo -n "amalgamate Lua modules, Lua script and C modules in two steps ... "
 lua$LUAV ../src/amalg.lua -o- -s main.lua -c -x | \
 lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o ctwosteps.lua -s- -t luasrcdiet -z brieflz && \
-lua$LUAV -e 'package.cpath = ""' ctwosteps.lua
+lua$LUAV -e 'package.path,package.cpath="",""' ctwosteps.lua
 
 echo -n "amalgamate Lua modules, but ignore C modules ... "
 lua$LUAV ../src/amalg.lua -o ignout.lua -s main.lua -c -x -i '^cmod' -i '^aiomod'
-lua$LUAV ignout.lua
+lua$LUAV -e 'package.path=""' ignout.lua
 
 exit 0
 

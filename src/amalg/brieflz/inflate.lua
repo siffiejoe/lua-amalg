@@ -18,8 +18,7 @@ function getbit( s, index, tag, bits )
   if bits == 0 then
     local byte0, byte1 = s:byte(index, index + 1)
     assert( byte1, errormsg )
-    tag, bits = byte1 * 256 + byte0, 16
-    index = index + 2
+    index, tag, bits = index + 2, byte1 * 256 + byte0, 16
   end
   local bit = tag > 32767 and 1 or 0
   return bit, index, 2 * tag - 65536 * bit, bits - 1

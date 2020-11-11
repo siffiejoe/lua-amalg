@@ -1,4 +1,4 @@
-[![Test Status](https://img.shields.io/github/workflow/status/siffiejoe/lua-amalg/run-tests?label=Tests&logo=Lua)](https://github.com/siffiejoe/lua-amalg/actions?workflow=run-tests)
+[![Test Status](https://github.com/siffiejoe/lua-amalg/workflows/run-tests/badge.svg)](https://github.com/siffiejoe/lua-amalg/actions?workflow=run-tests)
 
 #            Amalg -- Amalgamation of Lua Modules/Scripts            #
 

@@ -145,6 +145,11 @@
 --
 --     ./amalg.lua -o out.lua -s main.lua -c -t luasrcdiet -t luac -z brieflz
 --
+-- Note that compression is usually most effective when applied to the
+-- complete amalgamation script instead of just individual modules:
+--
+--     ./amalg.lua -s main.lua -c | ./amalg.lua -o out.lua -c- -t luasrcdiet -z brieflz
+--
 -- That's it. For further info consult the source.
 --
 --
@@ -655,6 +660,15 @@ end
   -- amalgamated code.
   if cmods then
     local nfuncs = {}
+    -- The amalgamation of C modules is split into two parts:
+    -- One part generates a temporary file name for the C library
+    -- and writes the binary code stored in the amalgamation to
+    -- that file, while the second loads the resulting dynamic
+    -- library using `package.loadlib`. The split is necessary
+    -- because multiple modules could be loaded from the same
+    -- library, and the amalgamated code has to simulate that.
+    -- Shared dynamic libraries are embedded and extracted only once.
+    --
     -- To make the loading of C modules more robust, the necessary
     -- global functions are saved in upvalues (because user-supplied
     -- code might be run before a C module is loaded). The upvalues
@@ -664,49 +678,40 @@ end
     -- On Windows the result of `os.tmpname()` is not an absolute
     -- path by default. If that's the case the value of the `TMP`
     -- environment variable is prepended to make it absolute.
+    --
+    -- The temporary dynamic library files may or may not be
+    -- cleaned up when the amalgamated code exits (this probably
+    -- works on POSIX machines (all Lua versions) and on Windows
+    -- with Lua 5.1). The reason is that starting with version 5.2
+    -- Lua ensures that libraries aren't unloaded before normal
+    -- user-supplied `__gc` metamethods have run to avoid a case
+    -- where such a metamethod would call an unloaded C function.
+    -- As a consequence the amalgamated code tries to remove the
+    -- temporary library files *before* they are actually unloaded.
     local prefix = [=[
 do
   local assert = assert
-  local newproxy = newproxy
-  local require = assert( require )
-  local getmetatable = assert( getmetatable )
-  local setmetatable = assert( setmetatable )
-  local os_tmpname = assert( os.tmpname )
-  local os_getenv = assert( os.getenv )
   local os_remove = assert( os.remove )
-  local io_open = assert( io.open )
-  local string_match = assert( string.match )
-  local string_sub = assert( string.sub )
   local package_loadlib = assert( package.loadlib )
-
-  local dirsep = package.config:match( "^([^\n]+)" )
-  local dlls, tmpdir = {}
-  local function newdll( name, code )
-    return function()
-      local tmpname = assert( os_tmpname() )
-      if dirsep == "\\" then
-        if not string_match( tmpname, "[\\/][^\\/]+[\\/]" ) then
-          tmpdir = tmpdir or assert( os_getenv( "TMP" ) or
-                                     os_getenv( "TEMP" ),
-                                     "could not detect temp directory" )
-          local first = string_sub( tmpname, 1, 1 )
-          local hassep = first == "\\" or first == "/"
-          tmpname = tmpdir..((hassep) and "" or "\\")..tmpname
-        end
+  local dlls = {}
+  local function temporarydll( code )
+    local tmpname = assert( os.tmpname() )
+    if package.config:match( "^([^\n]+)" ) == "\\" then
+      if not tmpname:match( "[\\/][^\\/]+[\\/]" ) then
+        local tmpdir = assert( os.getenv( "TMP" ) or os.getenv( "TEMP" ),
+                               "could not detect temp directory" )
+        local first = tmpname:sub( 1, 1 )
+        local hassep = first == "\\" or first == "/"
+        tmpname = tmpdir..((hassep) and "" or "\\")..tmpname
       end
-      local f = assert( io_open( tmpname, "wb" ) )
-      f:write(]=] .. open_inflate_calls( plugins ).." code"..
-      close_inflate_calls( plugins )..[=[ )
-      f:close()
-      local sentinel = newproxy and newproxy( true )
-                                or setmetatable( {}, { __gc = true } )
-      getmetatable( sentinel ).__gc = function() os_remove( tmpname ) end
-      dlls[ name ] = function()
-        local _ = sentinel
-        return tmpname
-      end
-      return tmpname
     end
+    local f = assert( io.open( tmpname, "wb" ) )
+    assert( f:write( code ) )
+    f:close()
+    local sentinel = newproxy and newproxy( true )
+                              or setmetatable( {}, { __gc = true } )
+    getmetatable( sentinel ).__gc = function() os_remove( tmpname ) end
+    return { tmpname, sentinel }
   end
 ]=]
     for _,m in ipairs( module_names ) do
@@ -730,31 +735,15 @@ do
         -- approaches of the different Lua versions in handling that.
         local openf = m:gsub( "%.", "_" )
         local openf1, openf2 = openf:match( "^([^%-]*)%-(.*)$" )
-        -- The amalgamation of C modules is split into two parts:
-        -- One part generates a temporary file name for the C library
-        -- and writes the binary code stored in the amalgamation to
-        -- that file, while the second loads the resulting dynamic
-        -- library using `package.loadlib`. The split is necessary
-        -- because multiple modules could be loaded from the same
-        -- library, and the amalgamated code has to simulate that.
-        -- Shared dynamic libraries are embedded only once.
-        --
-        -- The temporary dynamic library files may or may not be
-        -- cleaned up when the amalgamated code exits (this probably
-        -- works on POSIX machines (all Lua versions) and on Windows
-        -- with Lua 5.1). The reason is that starting with version 5.2
-        -- Lua ensures that libraries aren't unloaded before normal
-        -- user-supplied `__gc` metamethods have run to avoid a case
-        -- where such a metamethod would call an unloaded C function.
-        -- As a consequence the amalgamated code tries to remove the
-        -- temporary library files *before* they are actually
-        -- unloaded.
         if not nfuncs[ path ] then
           local code = readdllfile( path, plugins )
           nfuncs[ path ] = true
           local qcode = qformat( code )
-          out:write( prefix, "\n  dlls[ ", qpath, " ] = newdll( ",
-                             qpath, ", ", qcode, " )\n" )
+          -- The `temporarydll` function saves the embedded binary
+          -- code into a temporary file for later loading.
+          out:write( prefix, "\n  dlls[ ", qpath, " ] = temporarydll(",
+                             open_inflate_calls( plugins ), " ", qcode,
+                             close_inflate_calls( plugins ), " )\n" )
           prefix = ""
         end -- shared libary not embedded already
         -- Adds a function to `package.preload` to load the temporary
@@ -764,7 +753,7 @@ do
         -- beginning if that failed.
         local qm = qformat( m )
         out:write( "\n  package.", tname, "[ ", qm, " ] = function()\n",
-                   "    local dll = dlls[ ", qpath, " ]()\n" )
+                   "    local dll = dlls[ ", qpath, " ][ 1 ]\n" )
         if openf1 then
           out:write( "    local loader = package_loadlib( dll, ",
                      qformat( "luaopen_"..openf1 ), " )\n",

@@ -13,4 +13,6 @@ jobs:
       - uses: github/super-linter@v3
         env:
           DEFAULT_BRANCH: master
+          LOG_LEVEL: warn
+          GITHUB_TOKEN: ${{ github.token }}
 

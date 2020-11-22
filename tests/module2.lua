@@ -6,7 +6,7 @@ else
   _ENV = _M
 end
 
-function func()
+function func() -- luacheck: ignore func
   return "module2"
 end
 

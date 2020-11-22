@@ -846,7 +846,7 @@ local function collect()
   -- cache to the cache file on disk.
   if type( os ) == "table" and type( os.exit ) == "function" then
     local os_exit = os.exit
-    function os.exit( ... )
+    function os.exit( ... ) -- luacheck: ignore os
       writecache( c )
       return os_exit( ... )
     end

@@ -25,7 +25,7 @@ function getbit( s, index, tag, bits )
 end
 
 function getgamma( s, index, tag, bits )
-  local v, bit = 1, nil
+  local v, bit = 1
   repeat
     bit, index, tag, bits = getbit( s, index, tag, bits )
     assert( v < 2147483648, errormsg )
@@ -45,7 +45,7 @@ return function( s )
       len, off = len + 2, off - 2
       assert( off < 16777216 and index <= #s, errormsg )
       off, index = 256 * off + s:byte( index, index ) + 1, index + 1
-      if off > #buffer[n] then buffer, n = compact( buffer, n ) end
+      if off > #buffer[ n ] then buffer, n = compact( buffer, n ) end
       assert( off <= #buffer[ n ], errormsg )
       while len > 0 do -- copy match
         c = buffer[ n ]:sub( -off, #buffer[ n ]-off+len )

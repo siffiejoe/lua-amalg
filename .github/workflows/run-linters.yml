@@ -1,0 +1,16 @@
+name: run-linters
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: github/super-linter@v3
+        env:
+          DEFAULT_BRANCH: master
+

@@ -1,90 +1,117 @@
 #!/bin/bash
 
-LUAV=$1
-if [ "$1" != 5.1 -a "$1" != 5.2 -a "$1" != 5.3 -a "$1" != 5.4 -a "$1" != "gh" ]; then
-  LUAV=5.1
-fi
+case "$1" in
+  5.[0123456789]*|gh)
+    LUAV="$1"; shift ;;
+  *)
+    LUAV="5.1" ;;
+esac
 
-if [ "$LUAV" == "gh" ]; then
-  LUAV=""
+if [ "$LUAV" = "gh" ]; then
+  LUA=lua
+  LUAC=luac
   INC=../.lua/include
   set -e
-elif [ "$LUAV" == 5.4 ]; then
-  INC=/home/siffiejoe/.self/programs/lua$LUAV
 else
-  INC=/usr/include/lua$LUAV
+  LUA="lua$LUAV"
+  LUAC="luac$LUAV"
+  INC="/usr/include/lua$LUAV"
+  if [ ! -d "$INC" ]; then
+    INC="/home/siffiejoe/.self/programs/lua$LUAV"
+  fi
 fi
+
+echo -n "Using "
+"$LUA" -v
 
 gcc -Wall -Wextra -Os -fpic -I"$INC" -shared -o cmod.so cmod.c
 gcc -Wall -Wextra -Os -fpic -I"$INC" -shared -o aiomod.so aiomod.c
 
-echo "Using Lua $LUAV ..."
-luac$LUAV -o module1.luac module1.lua
-luac$LUAV -o module2.luac module2.lua
+"$LUAC" -o module1.luac module1.lua
+"$LUAC" -o module2.luac module2.lua
 
 echo -n "amalgamate modules only ... "
-lua$LUAV ../src/amalg.lua -o modules.lua module1 module2
-lua$LUAV -l modules main.lua
+"$LUA" ../src/amalg.lua -o modules.lua module1 module2
+"$LUA" -l modules main.lua
 
 echo -n "amalgamate modules as fallbacks(1) ... "
-lua$LUAV ../src/amalg.lua -f -o fallbacks.lua module1 module2
-lua$LUAV -l fallbacks main.lua
+"$LUA" ../src/amalg.lua -f -o fallbacks.lua module1 module2
+"$LUA" -l fallbacks main.lua
 echo -n "amalgamate modules as fallbacks(2) ... "
-lua$LUAV -l fallbacks -e "package.path=''" main.lua
+"$LUA" -l fallbacks -e "package.path=''" main.lua
 
 echo -n "amalgamate modules and script in text form ... "
-lua$LUAV ../src/amalg.lua -o textout.lua -s main.lua module1 module2
-lua$LUAV -e 'package.path=""' textout.lua
+"$LUA" ../src/amalg.lua -o textout.lua -s main.lua module1 module2
+"$LUA" -e 'package.path=""' textout.lua
 
 echo -n "amalgamate modules and script in binary form ... "
-lua$LUAV -e 'package.path = "./?.luac;"..package.path' ../src/amalg.lua -o binout.lua -s main.lua module1 module2
-lua$LUAV -e 'package.path=""' binout.lua
+"$LUA" -e 'package.path = "./?.luac;"..package.path' ../src/amalg.lua -o binout.lua -s main.lua module1 module2
+"$LUA" -e 'package.path=""' binout.lua
 
 echo -n "amalgamate and transform modules and script(1) ... "
-lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o zippedout.lua -s main.lua -t luac -z brieflz module1 module2 && \
-lua$LUAV -e 'package.path=""' zippedout.lua
+"$LUA" -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o zippedout.lua -s main.lua -t luac -z brieflz module1 module2 && \
+"$LUA" -e 'package.path=""' zippedout.lua
 
 echo -n "amalgamate and transform modules and script(2) ... "
-lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o dietout.lua -s main.lua -t luasrcdiet module1 module2 && \
-lua$LUAV -e 'package.path=""' dietout.lua
+"$LUA" -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o dietout.lua -s main.lua -t luasrcdiet module1 module2 && \
+"$LUA" -e 'package.path=""' dietout.lua
 
 echo -n "amalgamate and transform in two steps ... "
-lua$LUAV ../src/amalg.lua -o- -s main.lua module1 module2 | \
-lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o twosteps.lua -s- -t luasrcdiet -z brieflz && \
-lua$LUAV -e 'package.path=""' twosteps.lua
+"$LUA" ../src/amalg.lua -o- -s main.lua module1 module2 | \
+"$LUA" -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o twosteps.lua -s- -t luasrcdiet -z brieflz && \
+"$LUA" -e 'package.path=""' twosteps.lua
 
 echo -n "amalgamate modules and script without arg fix ... "
-lua$LUAV ../src/amalg.lua -o afixout.lua -a -s main.lua module1 module2
-lua$LUAV -e 'package.path=""' afixout.lua
+"$LUA" ../src/amalg.lua -o afixout.lua -a -s main.lua module1 module2
+"$LUA" -e 'package.path=""' afixout.lua
 
 echo -n "amalgamate modules and script with debug info ... "
-lua$LUAV ../src/amalg.lua -o debugout.lua -d -s main.lua module1 module2
-lua$LUAV -e 'package.path=""' debugout.lua
+"$LUA" ../src/amalg.lua -o debugout.lua -d -s main.lua module1 module2
+"$LUA" -e 'package.path=""' debugout.lua
 
 echo -n "collect module names using amalg.lua as a module ... "
-lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' -l amalg main.lua
+"$LUA" -e 'package.path = "../src/?.lua;"..package.path' -l amalg main.lua
 echo -n "amalgamate modules and script using amalg.cache ... "
-lua$LUAV ../src/amalg.lua -o cacheout.lua -s main.lua -c
-lua$LUAV -e 'package.path=""' cacheout.lua
+"$LUA" ../src/amalg.lua -o cacheout.lua -s main.lua -c
+"$LUA" -e 'package.path=""' cacheout.lua
 
 echo -n "amalgamate Lua modules, Lua script and C modules ... "
-lua$LUAV ../src/amalg.lua -o cmodout.lua -s main.lua -c -x
-lua$LUAV -e 'package.path,package.cpath="",""' cmodout.lua
+"$LUA" ../src/amalg.lua -o cmodout.lua -s main.lua -c -x
+"$LUA" -e 'package.path,package.cpath="",""' cmodout.lua
 
 echo -n "amalgamate Lua modules, Lua script and C modules compressed ... "
-lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o zipcmodout.lua -s main.lua -c -x -t luasrcdiet -z brieflz && \
-lua$LUAV -e 'package.path,package.cpath="",""' zipcmodout.lua
+"$LUA" -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o zipcmodout.lua -s main.lua -c -x -t luasrcdiet -z brieflz && \
+"$LUA" -e 'package.path,package.cpath="",""' zipcmodout.lua
 
 echo -n "amalgamate Lua modules, Lua script and C modules in two steps ... "
-lua$LUAV ../src/amalg.lua -o- -s main.lua -c -x | \
-lua$LUAV -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o ctwosteps.lua -s- -t luasrcdiet -z brieflz && \
-lua$LUAV -e 'package.path,package.cpath="",""' ctwosteps.lua
+"$LUA" ../src/amalg.lua -o- -s main.lua -c -x | \
+"$LUA" -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o ctwosteps.lua -s- -t luasrcdiet -z brieflz && \
+"$LUA" -e 'package.path,package.cpath="",""' ctwosteps.lua
 
 echo -n "amalgamate Lua modules, but ignore C modules ... "
-lua$LUAV ../src/amalg.lua -o ignout.lua -s main.lua -c -x -i '^cmod' -i '^aiomod'
-lua$LUAV -e 'package.path=""' ignout.lua
+"$LUA" ../src/amalg.lua -o ignout.lua -s main.lua -c -x -i '^cmod' -i '^aiomod'
+"$LUA" -e 'package.path=""' ignout.lua
 
-exit 0
 
-rm -f module1.luac module2.luac modules.lua fallbacks.lua textout.lua binout.lua zippedout.lua twosteps.lua dietout.lua afixout.lua debugout.lua cacheout.lua cmodout.lua zipcmodout.lua ctwosteps.lua ignout.lua amalg.cache cmod.so aiomod.so
+if [ "$1" != keep ]; then
+  rm -f module1.luac \
+        module2.luac \
+        modules.lua \
+        fallbacks.lua \
+        textout.lua \
+        binout.lua \
+        zippedout.lua \
+        twosteps.lua \
+        dietout.lua \
+        afixout.lua \
+        debugout.lua \
+        cacheout.lua \
+        cmodout.lua \
+        zipcmodout.lua \
+        ctwosteps.lua \
+        ignout.lua \
+        amalg.cache \
+        cmod.so \
+        aiomod.so
+fi
 

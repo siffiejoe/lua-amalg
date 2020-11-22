@@ -1,6 +1,8 @@
-[![Test Status](https://github.com/siffiejoe/lua-amalg/workflows/run-tests/badge.svg)](https://github.com/siffiejoe/lua-amalg/actions?workflow=run-tests)
-
 #            Amalg -- Amalgamation of Lua Modules/Scripts            #
+
+[![Test Status](https://github.com/siffiejoe/lua-amalg/workflows/run-tests/badge.svg)](https://github.com/siffiejoe/lua-amalg/actions?workflow=run-tests)
+[![Linter Status](https://github.com/siffiejoe/lua-amalg/workflows/run-linters/badge.svg)](https://github.com/siffiejoe/lua-amalg/actions?workflow=run-linters)
+
 
 ##                           Introduction                           ##
 

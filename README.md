@@ -13,7 +13,7 @@ a single file is a valuable help. This is such a tool.
 Features:
 
 *   Pure Lua (compatible with Lua 5.1 and up), no other external
-    dependencies.
+    dependencies (except for some plugins).
 *   Even works for modules using the deprecated `module` function.
 *   You don't have to take care of the order in which the modules are
     `require`'d.
@@ -79,7 +79,7 @@ To collect all Lua (and C) modules used by a program, you can load the
 
     lua -lamalg main.lua
 
-Multiple calls will add to this module cache. But don't access it from
+Multiple runs will add to this module cache. But don't access it from
 multiple concurrent processes!
 
 You can use the cache (in addition to all module names given on the
@@ -130,7 +130,7 @@ table as `_G.arg`).
     ./amalg.lua -o out.lua -a -s main.lua -c
 
 There is also some compression/decompression support handled via
-plugins to amalg. To select a transformation us the `-z` option.
+plugins to `amalg`. To select a transformation use the `-z` option.
 Multiple compression/transformation steps are possible, and they are
 executed in the given order. The necessary decompression code is
 embedded in the result and executed automatically.
@@ -200,7 +200,11 @@ dependencies and passes through binary input (i.e. already compiled
 Lua code) unmodified. Note that binary Lua code may be larger than Lua
 source code, especially when encoded in Lua's decimal escape notation.
 Binary Lua code is also platform dependent. It may or may not load
-faster than regular Lua source code.
+faster than regular Lua source code. It might make sense to
+additionally precompile the entire amalgamated result using `luac`
+because you otherwise still depend on Lua source code lexer and
+parser, and compressed/binary code in the amalgamated script is bigger
+than it needs to be because of the Lua decimal escape notation.
 
 ###                        luasrcdiet Plugin                       ###
 

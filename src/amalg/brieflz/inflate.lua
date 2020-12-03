@@ -16,7 +16,7 @@ end
 
 function getbit( s, index, tag, bits )
   if bits == 0 then
-    local byte0, byte1 = s:byte(index, index + 1)
+    local byte0, byte1 = s:byte( index, index + 1 )
     assert( byte1, errormsg )
     index, tag, bits = index + 2, byte1 * 256 + byte0, 16
   end

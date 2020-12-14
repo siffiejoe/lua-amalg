@@ -131,17 +131,17 @@
 --     ./amalg.lua -o out.lua -a -s main.lua -c
 --
 -- There is also some compression/decompression support handled via
--- plugins to amalg. To select a transformation us the `-z` option.
--- Multiple compression/transformation steps are possible, and they
--- are executed in the given order. The necessary decompression code
--- is embedded in the result and executed automatically.
+-- plugins to `amalg`. To select a transformation by name us the `-z`
+-- option. The necessary decompression code typically is embedded in
+-- the result and executed automatically (may depend on the plugin.)
 --
---     ./amalg.lua -o out.lua -s main.lua -c -z luac -z brieflz
+--     ./amalg.lua -o out.lua -s main.lua -c -z brieflz
 --
 -- Some plugins generate valid Lua code (text or binary) and thus
 -- don't need a decompression step. For those modules the `-t` option
 -- should be used instead to reduce dead code in the resulting
--- amalgamation file.
+-- amalgamation file. Multiple compression/transformation steps are
+-- possible, and are executed in the given order.
 --
 --     ./amalg.lua -o out.lua -s main.lua -c -t luasrcdiet -t luac -z brieflz
 --

@@ -420,7 +420,7 @@ end
 
 -- When the `-c` command line flag is given, the contents of the cache
 -- file `amalg.cache` are used to specify the modules to embed. This
--- function is used to load the cache file. <filename> ist optional:
+-- function is used to load the cache file. `<filename>` is optional:
 local function readcache( filename )
   local chunk = loadfile( filename or cache, "t", {} )
   if chunk then

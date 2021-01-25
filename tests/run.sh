@@ -72,7 +72,7 @@ echo -n "amalgamate modules and script with debug info ... "
 echo -n "collect module names using amalg.lua as a module ... "
 "$LUA" -e 'package.path = "../src/?.lua;"..package.path' -l amalg main.lua
 echo -n "amalgamate modules and script using amalg.cache ... "
-"$LUA" ../src/amalg.lua -o cacheout.lua -s main.lua -c
+"$LUA" ../src/amalg.lua -o cacheout.lua -s main.lua -C amalg.cache
 "$LUA" -e 'package.path=""' cacheout.lua
 
 echo -n "amalgamate Lua modules, Lua script and C modules ... "

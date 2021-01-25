@@ -178,6 +178,7 @@ end
 -- Function for parsing the command line of `amalg.lua` when invoked
 -- as a script. The following flags are supported:
 --
+-- *   `-h`: print help
 -- *   `-o <file>`: specify output file (default is `stdout`)
 -- *   `-s <file>`: specify main script to bundle
 -- *   `-c`: add the modules listed in the cache file `amalg.cache`
@@ -199,8 +200,8 @@ end
 -- command line (e.g. duplicate options) a warning is printed to the
 -- console.
 local function parse_cmdline( ... )
-  local modules, afix, ignores, plugins, tname, use_cache, cmods, dbg, script, oname, cname =
-        {}, true, {}, {}, "preload"
+  local help, modules, afix, ignores, plugins, tname, use_cache, cmods, dbg, script, oname, cname =
+        false, {}, true, {}, {}, "preload"
   local plugin_set = {} -- to remove duplicates
 
   local function set_oname( v )
@@ -281,6 +282,9 @@ local function parse_cmdline( ... )
         modules[ select( j, ... ) ] = true
       end
       break
+    elseif a == "-h" then
+      i = i + 1
+      help = true
     elseif a == "-o" then
       i = i + 1
       set_oname( i <= n and select( i, ... ) )
@@ -318,6 +322,12 @@ local function parse_cmdline( ... )
         set_script( a:sub( 3 ) )
       elseif prefix == "-i" then
         add_ignore( a:sub( 3 ) )
+      elseif prefix == "-t" then
+        add_transformation( a:sub( 3 ) )
+      elseif prefix == "-z" then
+        add_plugin( a:sub( 3 ) )
+      elseif prefix == "-C" then
+        set_cname( a:sub( 3 ) )
       elseif a:sub( 1, 1 ) == "-" then
         warn( "Unknown command line flag: "..a )
       else
@@ -326,7 +336,7 @@ local function parse_cmdline( ... )
     end
     i = i + 1
   end
-  return oname, script, dbg, afix, use_cache, tname, ignores, plugins, cmods, modules, cname
+  return help, oname, script, dbg, afix, use_cache, tname, ignores, plugins, cmods, modules, cname
 end
 
 
@@ -541,9 +551,34 @@ end
 -- collects the module and script sources, and writes the amalgamated
 -- source.
 local function amalgamate( ... )
-  local oname, script, dbg, afix, use_cache, tname, ignores, plugins, cmods, modules, cname =
+  local help, oname, script, dbg, afix, use_cache, tname, ignores, plugins, cmods, modules, cname =
         parse_cmdline( ... )
   local errors = {}
+
+
+  if help then
+    print[[
+amalg.lua <options> [--] <modules...>
+
+  available options:
+    -h: print help/usage
+    -o <file>: write output to <file>
+    -s <file>: embed <file> as main script
+    -c: take module names from `amalg.cache` cache file
+    -C <file>: take module names from  <file>
+    -i <pattern>: ignore matching modules from cache
+      (can be specified multiple times)
+    -d: preserve file names and line numbers
+    -a: disable `arg` fix
+    -f: use embedded modules as fallback only
+    -x: also embed C modules
+    -t <plugin>: use transformation plugin
+      (can be specified multiple times)
+    -z <plugin>: use (de-)compression plugin
+      (can be specified multiple times)
+]]
+    return
+  end
 
   -- When instructed to on the command line, the cache file is loaded,
   -- and the modules are added to the ones listed on the command line

@@ -193,6 +193,7 @@ end
 -- *   `-x`: also embed compiled C modules
 -- *   `-t <plugin>`: use transformation plugin
 -- *   `-z <plugin>`: use compression plugin
+-- *   `-v <file>`: embed as virtual resource
 -- *   `--`: stop parsing command line flags (all remaining arguments
 --     are considered module names)
 --
@@ -200,8 +201,8 @@ end
 -- command line (e.g. duplicate options) a warning is printed to the
 -- console.
 local function parse_cmdline( ... )
-  local help, modules, afix, ignores, plugins, tname, use_cache, cmods, dbg, script, oname, cname =
-        false, {}, true, {}, {}, "preload"
+  local help, modules, afix, ignores, plugins, tname, vio, use_cache, cmods, dbg, script, oname, cname =
+        false, {}, true, {}, {}, "preload", {}
   local plugin_set = {} -- to remove duplicates
 
   local function set_oname( v )
@@ -274,6 +275,14 @@ local function parse_cmdline( ... )
     end
   end
 
+  local function add_vio( v )
+    if v then
+      vio[ #vio+1 ] = v
+    else
+      warn( "Missing argument for -v option!" )
+    end
+  end
+
   local i, n = 1, select( '#', ... )
   while i <= n do
     local a = select( i, ... )
@@ -300,6 +309,9 @@ local function parse_cmdline( ... )
     elseif a == "-z" then
       i = i + 1
       add_plugin( i <= n and select( i, ... ) )
+    elseif a == "-v" then
+      i = i + 1
+      add_vio( i <= n and select( i, ... ) )
     elseif a == "-f" then
       tname = "postload"
     elseif a == "-c" then
@@ -326,6 +338,8 @@ local function parse_cmdline( ... )
         add_transformation( a:sub( 3 ) )
       elseif prefix == "-z" then
         add_plugin( a:sub( 3 ) )
+      elseif prefix == "-v" then
+        add_vio( a:sub( 3 ) )
       elseif prefix == "-C" then
         set_cname( a:sub( 3 ) )
       elseif a:sub( 1, 1 ) == "-" then
@@ -336,7 +350,7 @@ local function parse_cmdline( ... )
     end
     i = i + 1
   end
-  return help, oname, script, dbg, afix, use_cache, tname, ignores, plugins, cmods, modules, cname
+  return help, oname, script, dbg, afix, use_cache, tname, ignores, plugins, cmods, modules, cname, vio
 end
 
 
@@ -399,10 +413,10 @@ local function readluafile( path, plugins, stdin_allowed )
 end
 
 
--- C extension modules may be embedded into the the amalgamated script
--- as well. Compression/decompression plugins are applied as well,
--- transformation plugins are skipped.
-local function readdllfile( path, plugins )
+-- C extension modules and virtual resources may be embedded into the
+-- amalgamated script as well. Compression/decompression plugins are
+-- applied, transformation plugins are skipped.
+local function readbinfile( path, plugins )
   local s = readfile( path, true )
   for _, p in ipairs( plugins ) do
     if p[ 2 ] and p[ 3 ] then
@@ -551,7 +565,7 @@ end
 -- collects the module and script sources, and writes the amalgamated
 -- source.
 local function amalgamate( ... )
-  local help, oname, script, dbg, afix, use_cache, tname, ignores, plugins, cmods, modules, cname =
+  local help, oname, script, dbg, afix, use_cache, tname, ignores, plugins, cmods, modules, cname, vio =
         parse_cmdline( ... )
   local errors = {}
 
@@ -575,6 +589,8 @@ amalg.lua <options> [--] <modules...>
     -t <plugin>: use transformation plugin
       (can be specified multiple times)
     -z <plugin>: use (de-)compression plugin
+      (can be specified multiple times)
+    -v <file>: store <file> in amalgamation
       (can be specified multiple times)
 ]]
     return
@@ -624,20 +640,20 @@ amalg.lua <options> [--] <modules...>
   if tname == "postload" then
     out:write([=[
 do
-  local assert = assert
-  local type = assert( type )
-  local searchers = package.searchers or package.loaders
-  local postload = {}
-  package.postload = postload
-  searchers[ #searchers+1 ] = function( mod )
-    assert( type( mod ) == "string", "module name must be a string" )
-    local loader = postload[ mod ]
-    if loader == nil then
-      return "\n\tno field package.postload['"..mod.."']"
-    else
-      return loader
-    end
+local assert = assert
+local type = assert( type )
+local searchers = package.searchers or package.loaders
+local postload = {}
+package.postload = postload
+searchers[ #searchers+1 ] = function( mod )
+  assert( type( mod ) == "string", "module name must be a string" )
+  local loader = postload[ mod ]
+  if loader == nil then
+    return "\n\tno field package.postload['"..mod.."']"
+  else
+    return loader
   end
+end
 end
 
 ]=] )
@@ -725,29 +741,29 @@ end
     -- temporary library files *before* they are actually unloaded.
     local prefix = [=[
 do
-  local assert = assert
-  local os_remove = assert( os.remove )
-  local package_loadlib = assert( package.loadlib )
-  local dlls = {}
-  local function temporarydll( code )
-    local tmpname = assert( os.tmpname() )
-    if package.config:match( "^([^\n]+)" ) == "\\" then
-      if not tmpname:match( "[\\/][^\\/]+[\\/]" ) then
-        local tmpdir = assert( os.getenv( "TMP" ) or os.getenv( "TEMP" ),
-                               "could not detect temp directory" )
-        local first = tmpname:sub( 1, 1 )
-        local hassep = first == "\\" or first == "/"
-        tmpname = tmpdir..((hassep) and "" or "\\")..tmpname
-      end
+local assert = assert
+local os_remove = assert( os.remove )
+local package_loadlib = assert( package.loadlib )
+local dlls = {}
+local function temporarydll( code )
+  local tmpname = assert( os.tmpname() )
+  if package.config:match( "^([^\n]+)" ) == "\\" then
+    if not tmpname:match( "[\\/][^\\/]+[\\/]" ) then
+      local tmpdir = assert( os.getenv( "TMP" ) or os.getenv( "TEMP" ),
+                             "could not detect temp directory" )
+      local first = tmpname:sub( 1, 1 )
+      local hassep = first == "\\" or first == "/"
+      tmpname = tmpdir..((hassep) and "" or "\\")..tmpname
     end
-    local f = assert( io.open( tmpname, "wb" ) )
-    assert( f:write( code ) )
-    f:close()
-    local sentinel = newproxy and newproxy( true )
-                              or setmetatable( {}, { __gc = true } )
-    getmetatable( sentinel ).__gc = function() os_remove( tmpname ) end
-    return { tmpname, sentinel }
   end
+  local f = assert( io.open( tmpname, "wb" ) )
+  assert( f:write( code ) )
+  f:close()
+  local sentinel = newproxy and newproxy( true )
+                            or setmetatable( {}, { __gc = true } )
+  getmetatable( sentinel ).__gc = function() os_remove( tmpname ) end
+  return { tmpname, sentinel }
+end
 ]=]
     for _,m in ipairs( module_names ) do
       local t = modules[ m ]
@@ -771,12 +787,12 @@ do
         local openf = m:gsub( "%.", "_" )
         local openf1, openf2 = openf:match( "^([^%-]*)%-(.*)$" )
         if not nfuncs[ path ] then
-          local code = readdllfile( path, plugins )
+          local code = readbinfile( path, plugins )
           nfuncs[ path ] = true
           local qcode = qformat( code )
           -- The `temporarydll` function saves the embedded binary
           -- code into a temporary file for later loading.
-          out:write( prefix, "\n  dlls[ ", qpath, " ] = temporarydll(",
+          out:write( prefix, "\ndlls[ ", qpath, " ] = temporarydll(",
                              open_inflate_calls( plugins ), " ", qcode,
                              close_inflate_calls( plugins ), " )\n" )
           prefix = ""
@@ -787,26 +803,149 @@ do
         -- from the module name at the end first, and then at the
         -- beginning if that failed.
         local qm = qformat( m )
-        out:write( "\n  package.", tname, "[ ", qm, " ] = function()\n",
-                   "    local dll = dlls[ ", qpath, " ][ 1 ]\n" )
+        out:write( "\npackage.", tname, "[ ", qm, " ] = function()\n",
+                   "  local dll = dlls[ ", qpath, " ][ 1 ]\n" )
         if openf1 then
-          out:write( "    local loader = package_loadlib( dll, ",
+          out:write( "  local loader = package_loadlib( dll, ",
                      qformat( "luaopen_"..openf1 ), " )\n",
-                     "    if not loader then\n",
-                     "      loader = assert( package_loadlib( dll, ",
+                     "  if not loader then\n",
+                     "    loader = assert( package_loadlib( dll, ",
                      qformat( "luaopen_"..openf2 ),
-                     " ) )\n    end\n" )
+                     " ) )\n  end\n" )
         else
-          out:write( "    local loader = assert( package_loadlib( dll, ",
+          out:write( "  local loader = assert( package_loadlib( dll, ",
                      qformat( "luaopen_"..openf ), " ) )\n" )
         end
-        out:write( "    return loader( ", qm, ", dll )\n  end\n" )
+        out:write( "  return loader( ", qm, ", dll )\nend\n" )
       end -- is a C module
     end -- for all given module names
     if prefix == "" then
       out:write( "end\n\n" )
     end
   end -- if cmods
+
+  -- virtual resources are embedded like dlls, and the Lua standard
+  -- io functions are monkey-patched to search for embedded files
+  -- first.
+  if #vio > 0 then
+    out:write( [=[
+do
+local vfile = {}
+local vfile_mt = { __index = vfile }
+local assert = assert
+local select = assert( select )
+local setmetatable = assert( setmetatable )
+local tonumber = assert( tonumber )
+local type = assert( type )
+local table_unpack = assert( unpack or table.unpack )
+local io_open = assert( io.open )
+local io_lines = assert( io.lines )
+local _loadfile = assert( loadfile )
+local _dofile = assert( dofile )
+local virtual = {}
+function io.open( path, mode )
+  if (mode == "r" or mode == "rb") and virtual[ path ] then
+    return setmetatable( { offset=0, data=virtual[ path ] }, vfile_mt )
+  else
+    return io_open( path, mode )
+  end
+end
+function io.lines( path, ... )
+  if virtual[ path ] then
+    return setmetatable( { offset=0, data=virtual[ path ] }, vfile_mt ):lines( ... )
+  else
+    return io_lines( path, ... )
+  end
+end
+function loadfile( path, ... )
+  if virtual[ path ] then
+    local s = virtual[ path ]:gsub( "^%s*#[^\n]*\n", "" )
+    return (loadstring or load)( s, "@"..path, ... )
+  else
+    return _loadfile( path, ... )
+  end
+end
+function dofile( path )
+  if virtual[ path ] then
+    local s = virtual[ path ]:gsub( "^%s*#[^\n]*\n", "" )
+    return assert( (loadstring or load)( s, "@"..path ) )()
+  else
+    return _dofile( path )
+  end
+end
+function vfile:close() return true end
+vfile.flush = vfile.close
+vfile.setvbuf = vfile.close
+function vfile:write() return self end
+local function lines_iterator( state )
+  return state.file:read( table_unpack( state, 1, state.n ) )
+end
+function vfile:lines( ... )
+  return lines_iterator, { file=self, n=select( '#', ... ), ... }
+end
+local function _read( self, n, fmt, ... )
+  if n > 0 then
+    local o = self.offset
+    if o >= #self.data then return nil end
+    if type( fmt ) == "number" then
+      self.offset = o + fmt
+      return self.data:sub( o+1, self.offset ), _read( self, n-1, ... )
+    elseif fmt == "n" or fmt == "*n" then
+      local s, p = self.data:match( "^%s*([+-]?0[xX]%x+%.?%x*[pP][+-]?%x+)()", o+1 )
+      if not s then
+        s, p = self.data:match( "^%s*([+-]?0[xX]%x+%.?%x*)()", o+1 )
+      end
+      if not s then
+        s, p = self.data:match( "^%s*([+-]?%d+%.?%d*[eE][+-]?%d+)()", o+1 )
+      end
+      if not s then
+        s, p = self.data:match( "^%s*([+-]?%d+%.?%d*)()", o+1 )
+      end
+      if not s then return nil end
+      self.offset = p-1
+      return tonumber( s ), _read( self, n-1, ... )
+    elseif fmt == "l" or fmt == "*l" then
+      local s, p = self.data:match( "^([^\r\n]*)\r?\n?()", o+1 )
+      self.offset = p-1
+      return s, _read( self, n-1, ... )
+    elseif fmt == "L" or fmt == "*L" then
+      local s, p = self.data:match( "^([^\r\n]*\r?\n?)()", o+1 )
+      self.offset = p-1
+      return s, _read( self, n-1, ... )
+    elseif fmt == "a" or fmt == "*a" then
+      self.offset = #self.data
+      return self.data:sub( o+1, self.offset )
+    end
+  end
+end
+function vfile:read( ... )
+  local n = select( '#', ... )
+  if n > 0 then
+    return _read( self, n, ... )
+  else
+    return _read( self, 1, "l" )
+  end
+end
+function vfile:seek( whence, offset )
+  whence, offset = whence or "cur", offset or 0
+  if whence == "set" then
+    self.offset = offset
+  elseif whence == "cur" then
+    self.offset = self.offset + offset
+  elseif whence == "end" then
+    self.offset = #self.data + offset
+  end
+  return self.offset
+end
+]=] )
+    for _,v in ipairs( vio ) do
+      local qdata = qformat( readbinfile( v, plugins ) )
+      out:write( "\nvirtual[ ", qformat( v ), " ] =",
+                 open_inflate_calls( plugins ), " ", qdata,
+                 close_inflate_calls( plugins ), "\n" )
+    end
+    out:write( "end\n\n" )
+  end -- if #vio
 
   -- If a main script is specified on the command line (`-s` flag),
   -- embed it now that all dependent modules are available to

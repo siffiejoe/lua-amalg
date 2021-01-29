@@ -30,6 +30,19 @@ gcc -Wall -Wextra -Os -fpic -I"$INC" -shared -o aiomod.so aiomod.c
 "$LUAC" -o module1.luac module1.lua
 "$LUAC" -o module2.luac module2.lua
 
+cat > data.txt <<'EOF'
+hello world
+hello world
++1 -2.5 0xdeadbeef 1.5e1 1e1
+12345678
+EOF
+
+cat > vscript.lua <<'EOF'
+#!/usr/bin/env lua
+return 123
+EOF
+
+
 echo -n "amalgamate modules only ... "
 "$LUA" ../src/amalg.lua -o modules.lua module1 module2
 "$LUA" -l modules main.lua
@@ -92,6 +105,11 @@ echo -n "amalgamate Lua modules, but ignore C modules ... "
 "$LUA" ../src/amalg.lua -o ignout.lua -s main.lua -c -x -i '^cmod' -i '^aiomod'
 "$LUA" -e 'package.path=""' ignout.lua
 
+echo -n "amalgamate with virtual IO ... "
+"$LUA" ../src/amalg.lua -o vout.lua -s vio.lua -v data.txt -v vscript.lua
+rm -f data.txt vscript.lua
+"$LUA" vout.lua
+
 
 if [ "$1" != keep ]; then
   rm -f module1.luac \
@@ -110,6 +128,7 @@ if [ "$1" != keep ]; then
         zipcmodout.lua \
         ctwosteps.lua \
         ignout.lua \
+        vout.lua \
         amalg.cache \
         cmod.so \
         aiomod.so

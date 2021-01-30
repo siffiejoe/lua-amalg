@@ -238,6 +238,18 @@ reduces the size of the resulting amalgamation script in many cases.
   [10]: https://github.com/jibsen/brieflz
 
 
+##                          Troubleshooting                         ##
+
+> `amalg.lua` does not find modules in the cache file generated via
+> `lua -lamalg`
+
+`lua -lamalg` records the module names exactly as they are used
+(`require`d) by the application. Therefore, you should always tweak
+`package.path` instead of "fixing" the cache file if a module can't be
+found during amalgamation. This can happen if the application modifies
+its own `package.path` at runtime or changes its working directory.
+
+
 ##                              Contact                             ##
 
 Philipp Janda, siffiejoe(a)gmx.net

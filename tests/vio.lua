@@ -19,17 +19,7 @@ assert( 10 == file:read( "*n" ) )
 assert( 0 == file:seek( "set" ) )
 assert( contents == file:read( "*a" ) )
 assert( 0 == file:seek( "set" ) )
-local a, b, c, d, e, f, g = file:read( "l", "L", "n", "n", "n", "n", "n" )
-assert( a == "hello world" )
-assert( b == "hello world\n" )
-assert( c == 1 )
-assert( d == -2.5 )
-assert( e == 3735928559 )
-assert( f == 15 )
-assert( g == 10 )
-assert( 0 == file:seek( "set" ) )
-local looped = false
-for a, b, c, d, e, f, g in file:lines( "l", "L", "n", "n", "n", "n", "n" ) do
+local function checkvalues( a, b, c, d, e, f, g )
   assert( a == "hello world" )
   assert( b == "hello world\n" )
   assert( c == 1 )
@@ -37,21 +27,25 @@ for a, b, c, d, e, f, g in file:lines( "l", "L", "n", "n", "n", "n", "n" ) do
   assert( e == 3735928559 )
   assert( f == 15 )
   assert( g == 10 )
-  looped = true
-  break
+  return true
+end
+local a1, b1, c1, d1, e1, f1, g1 = file:read( "l", "L", "n", "n", "n", "n", "n" )
+checkvalues( a1, b1, c1, d1, e1, f1, g1 )
+assert( 0 == file:seek( "set" ) )
+local looped = false
+for a2, b2, c2, d2, e2, f2, g2 in file:lines( "l", "L", "n", "n", "n", "n", "n" ) do
+  if checkvalues( a2, b2, c2, d2, e2, f2, g2 ) then
+    looped = true
+    break
+  end
 end
 assert( looped )
 looped = false
-for a, b, c, d, e, f, g in io.lines( "data.txt", "l", "L", "n", "n", "n", "n", "n" ) do
-  assert( a == "hello world" )
-  assert( b == "hello world\n" )
-  assert( c == 1 )
-  assert( d == -2.5 )
-  assert( e == 3735928559 )
-  assert( f == 15 )
-  assert( g == 10 )
-  looped = true
-  break
+for a2, b2, c2, d2, e2, f2, g2 in io.lines( "data.txt", "l", "L", "n", "n", "n", "n", "n" ) do
+  if checkvalues( a2, b2, c2, d2, e2, f2, g2 ) then
+    looped = true
+    break
+  end
 end
 assert( looped )
 assert( #contents == file:seek( "end" ) )

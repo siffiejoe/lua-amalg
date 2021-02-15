@@ -891,19 +891,22 @@ local function _read( self, n, fmt, ... )
       self.offset = o + fmt
       return self.data:sub( o+1, self.offset ), _read( self, n-1, ... )
     elseif fmt == "n" or fmt == "*n" then
-      local s, p = self.data:match( "^%s*([+-]?0[xX]%x+%.?%x*[pP][+-]?%x+)()", o+1 )
-      if not s then
-        s, p = self.data:match( "^%s*([+-]?0[xX]%x+%.?%x*)()", o+1 )
+      local p, e, x = self.data:match( "^%s*()%S+()", o+1 )
+      if p then
+        o = p - 1
+        for i = p+1, e-1 do
+          local newx = tonumber( self.data:sub( p, i ) )
+          if newx then
+            x, o = newx, i
+          elseif i > o+3 then
+            break
+          end
+        end
+      else
+        o = #self.data
       end
-      if not s then
-        s, p = self.data:match( "^%s*([+-]?%d+%.?%d*[eE][+-]?%d+)()", o+1 )
-      end
-      if not s then
-        s, p = self.data:match( "^%s*([+-]?%d+%.?%d*)()", o+1 )
-      end
-      if not s then return nil end
-      self.offset = p-1
-      return tonumber( s ), _read( self, n-1, ... )
+      self.offset = o
+      return x, _read( self, n-1, ... )
     elseif fmt == "l" or fmt == "*l" then
       local s, p = self.data:match( "^([^\r\n]*)\r?\n?()", o+1 )
       self.offset = p-1

@@ -249,6 +249,15 @@ reduces the size of the resulting amalgamation script in many cases.
 found during amalgamation. This can happen if the application modifies
 its own `package.path` at runtime or changes its working directory.
 
+> My environment does not support `require` or the `package` module!
+
+That's unfortunate. This tool relies on a working `require` function
+and a minimal `package` module. See [this stackoverflow post][11] for
+how you can provide minimal stubs for the World of Warcraft
+environment.
+
+  [11]: https://stackoverflow.com/questions/36871859/lua-emulating-the-require-function/36892318#36892318
+
 
 ##                              Contact                             ##
 
@@ -262,7 +271,7 @@ Comments and feedback are always welcome.
 `amalg` is *copyrighted free software* distributed under the MIT
 license (the same license as Lua 5.1). The full license text follows:
 
-    amalg (c) 2013-2020 Philipp Janda
+    amalg (c) 2013-2021 Philipp Janda
 
     Permission is hereby granted, free of charge, to any person obtaining
     a copy of this software and associated documentation files (the

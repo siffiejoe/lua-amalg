@@ -27,7 +27,7 @@ What it doesn't do:
 *   It doesn't do static analysis of Lua code to collect `require`'d
     modules. That won't work reliably anyway. You can write your own
     program for that (using the output of `luac -p -l`), or use
-    [squish][1], or [soar][3] instead.
+    [squish][1], or [soar][2] instead.
 *   It doesn't handle the dependencies of C modules, so it is best
     used on C modules without dependencies (e.g. LuaSocket, LFS,
     etc.).

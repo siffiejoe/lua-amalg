@@ -32,15 +32,16 @@ What it doesn't do:
     used on C modules without dependencies (e.g. LuaSocket, LFS,
     etc.).
 
-There are alternatives to this program: See [squish][1], [LOOP][2],
-[soar][3], [luac.lua][4], and [bundle.lua][5] (and probably some
-more).
+There are alternatives to this program: See [squish][1], [soar][2],
+[luac.lua][3], [luacc][4], [many2one][5], and [bundle.lua][6] (and
+probably some more).
 
-  [1]: http://matthewwild.co.uk/projects/squish/home
-  [2]: http://loop.luaforge.net/release/preload.html
-  [3]: http://lua-users.org/lists/lua-l/2012-02/msg00609.html
-  [4]: http://www.tecgraf.puc-rio.br/~lhf/ftp/lua/5.1/luac.lua
-  [5]: https://github.com/akavel/scissors/blob/master/tools/bundle/bundle.lua
+  [1]: http://code.matthewwild.co.uk/squish/
+  [2]: http://lua-users.org/lists/lua-l/2012-02/msg00609.html
+  [3]: http://www.tecgraf.puc-rio.br/~lhf/ftp/lua/5.1/luac.lua
+  [4]: https://github.com/mihacooper/luacc
+  [5]: https://github.com/aryajur/many2one
+  [6]: https://github.com/akavel/scissors/blob/master/tools/bundle/bundle.lua
 
 
 ##                          Getting Started                         ##
@@ -150,11 +151,11 @@ complete amalgamation script instead of just individual modules:
     ./amalg.lua -s main.lua -c | ./amalg.lua -o out.lua -s- -t luasrcdiet -z brieflz
 
 That's it. For further info consult the source (there's a nice
-[annotated HTML file][6] rendered with [Docco][7] on the GitHub
+[annotated HTML file][7] rendered with [Docco][8] on the GitHub
 pages). Have fun!
 
-  [6]: http://siffiejoe.github.io/lua-amalg/
-  [7]: http://jashkenas.github.io/docco/
+  [7]: http://siffiejoe.github.io/lua-amalg/
+  [8]: http://jashkenas.github.io/docco/
 
 
 ##                              Plugins                             ##
@@ -212,21 +213,21 @@ The `luasrcdiet` plugin is a transformation plugin that minifies Lua
 source code by replacing names of local variables, stripping white
 space, removing comments, etc. It passes through binary input (i.e.
 already compiled Lua code) unmodified. You need to install the
-[luasrcdiet][8] module for the amalgamation step. The amalgamated
+[luasrcdiet][9] module for the amalgamation step. The amalgamated
 script doesn't have any extra dependencies. This transformation is a
 good choice for reducing the size of the resulting amalgamated Lua
 script.
 
-  [8]: https://luarocks.org/modules/jirutka/luasrcdiet
+  [9]: https://luarocks.org/modules/jirutka/luasrcdiet
 
 ###                         brieflz Plugin                         ###
 
 The `brieflz` plugin is a compression plugin that compresses its input
 during amalgamation and decompresses it on the fly during runtime. The
-compression step relies on the [brieflz][9] module which must be
+compression step relies on the [brieflz][10] module which must be
 installed during amalgamation. The decompression step is performed by
 a pure Lua port of the `blz_depack_safe` function from the
-[original C code][10] by Jørgen Ibsen (@jibsen). The decompression
+[original C code][11] by Jørgen Ibsen (@jibsen). The decompression
 code is embedded into the resulting amalgamation script, so no extra
 dependency is needed at runtime, but it adds about 2kB (1kB when
 minified with `luasrcdiet`) size overhead. Note that binary data in
@@ -234,8 +235,8 @@ the amalgamation is stored in standard Lua decimal escape notation, so
 it may be larger than usual. However, brieflz compression still
 reduces the size of the resulting amalgamation script in many cases.
 
-  [9]: https://luarocks.org/modules/jirutka/brieflz
-  [10]: https://github.com/jibsen/brieflz
+  [10]: https://luarocks.org/modules/jirutka/brieflz
+  [11]: https://github.com/jibsen/brieflz
 
 
 ##                          Troubleshooting                         ##
@@ -252,11 +253,11 @@ its own `package.path` at runtime or changes its working directory.
 > My environment does not support `require` or the `package` module!
 
 That's unfortunate. This tool relies on a working `require` function
-and a minimal `package` module. See [this stackoverflow post][11] for
+and a minimal `package` module. See [this stackoverflow post][12] for
 how you can provide minimal stubs for the World of Warcraft
 environment.
 
-  [11]: https://stackoverflow.com/questions/36871859/lua-emulating-the-require-function/36892318#36892318
+  [12]: https://stackoverflow.com/questions/36871859/lua-emulating-the-require-function/36892318#36892318
 
 
 ##                              Contact                             ##

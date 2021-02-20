@@ -2,8 +2,6 @@ name: gh-pages
 on:
   push:
     branches: ["master"]
-  pull_request:
-  workflow_dispatch:
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -25,7 +23,6 @@ jobs:
         with:
           github_token: ${{ github.token }}
           publish_dir: ./src/docs
-          publish_branch: gh-pages-test
           force_orphan: true
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'

@@ -1,0 +1,29 @@
+name: gh-pages
+on:
+  push:
+    branches: ["master"]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '12'
+      - run: npm install -g docco
+      - name: Run docco to create html page
+        run: |
+          docco amalg.lua
+          sed -n -e'1h;1!H;${x;s:\([^\n]*\n\)\{12\}[^\n]*/usr/bin/env\([^\n]*\n\)\{4\}::;p}' docs/amalg.html > docs/index.html
+          rm -f docs/amalg.html
+        working-directory: ./src
+      - uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ github.token }}
+          publish_dir: ./src/docs
+          force_orphan: true
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+

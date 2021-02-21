@@ -150,6 +150,17 @@ complete amalgamation script instead of just individual modules:
 
     ./amalg.lua -s main.lua -c | ./amalg.lua -o out.lua -s- -t luasrcdiet -z brieflz
 
+If you want to bundle some other read-only files with your amalgamated
+script, you can do so with virtual IO and the `-v` switch:
+
+    ./amalg.lua -s main.lua -c -v template.txt
+
+This will embed `template.txt` in the amalgamated script and
+monky-patch the file IO functions if (and only if) the resource is
+opened *read-only*. This commandline switch may be used multiple times
+for multiple virtual resources. The file path has to match exactly or
+else normal file IO is used.
+
 That's it. For further info consult the source (there's a nice
 [annotated HTML file][7] rendered with [Docco][8] on the GitHub
 pages). Have fun!

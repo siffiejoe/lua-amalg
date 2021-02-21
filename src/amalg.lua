@@ -3,156 +3,6 @@
 -- **Amalg** is a Lua tool for bundling a Lua script and dependent
 -- Lua modules in a single `.lua` file for easier distribution.
 --
--- Features:
--- *   Pure Lua (compatible with Lua 5.1 and up), no external
---     dependencies. (Even works for modules using the deprecated
---     `module` function.)
--- *   You don't have to take care of the order in which the modules
---     are `require`d.
--- *   Can embed compiled C modules.
--- *   Can collect `require`d Lua (and C) modules automatically.
--- *   Can compress/decompress or precompile using plugin modules.
---
--- What it doesn't do:
---
--- *   It doesn't do static analysis of Lua code to collect `require`d
---     modules. That won't work reliably anyway in a dynamic language!
---     You can write your own program for that (e.g. using the output
---     of `luac -p -l`), or use [squish][1], or [soar][3] instead.
--- *   It doesn't handle the dependencies of C modules, so it is best
---     used on C modules without dependencies (e.g. LuaSocket, LFS,
---     etc.).
---
--- The `amalg.lua` [source code][6] is available on GitHub, and is
--- released under the [MIT license][7]. You can view [a nice HTML
--- version][8] of this file rendered by [Docco][9] on the GitHub
--- pages.
---
--- As already mentioned, there are alternatives to this program: See
--- [squish][1], [LOOP][2], [soar][3], [luac.lua][4], and
--- [bundle.lua][5] (and probably some more).
---
---   [1]: http://matthewwild.co.uk/projects/squish/home
---   [2]: http://loop.luaforge.net/release/preload.html
---   [3]: http://lua-users.org/lists/lua-l/2012-02/msg00609.html
---   [4]: http://www.tecgraf.puc-rio.br/~lhf/ftp/lua/5.1/luac.lua
---   [5]: https://github.com/akavel/scissors/blob/master/tools/bundle/bundle.lua
---   [6]: http://github.com/siffiejoe/lua-amalg
---   [7]: http://opensource.org/licenses/MIT
---   [8]: http://siffiejoe.github.io/lua-amalg/
---   [9]: http://jashkenas.github.io/docco/
---
---
--- ## Getting Started
---
--- You can bundle a collection of Lua modules in a single file by
--- calling the `amalg.lua` script and passing the module names on the
--- command line:
---
---     ./amalg.lua module1 module2
---
--- The modules are collected using `package.path`, so they have to be
--- available there. The resulting merged Lua code will be written to
--- the standard output stream. You have to actually run the resulting
--- code to make the embedded Lua modules available for `require`.
---
--- You can specify an output file to use instead of the standard
--- output stream:
---
---     ./amalg.lua -o out.lua module1 module2
---
--- You can also embed the main script of your application in the
--- merged Lua code as well. Of course, the embedded Lua modules can be
--- `require`d from the embedded main script.
---
---     ./amalg.lua -o out.lua -s main.lua module1 module2
---
--- If you want the original file names and line numbers to appear in
--- error messages, you have to activate debug mode. This will require
--- slightly more memory, though.
---
---     ./amalg.lua -o out.lua -d -s main.lua module1 module2
---
--- To collect all Lua (and C) modules used by a program, you can load
--- the `amalg.lua` script as a module, and it will intercept calls to
--- `require` (more specifically the Lua module searchers) and save the
--- necessary Lua module names in a file `amalg.cache` in the current
--- directory:
---
---     lua -lamalg main.lua
---
--- Multiple calls will add to this module cache. But don't access it
--- from multiple concurrent processes (the cache isn't protected
--- against race conditions)!
---
--- You can use the cache (in addition to all module names given on the
--- command line) using the `-c` or `-C` flag:
---
---     ./amalg.lua -o out.lua -s main.lua -c
---     ./amalg.lua -o out.lua -s main.lua -C myamalg.cache
---
--- However, this will only embed the Lua modules. To also embed the C
--- modules (both from the cache and from the command line), you have
--- to specify the `-x` flag:
---
---     ./amalg.lua -o out.lua -s main.lua -c -x
---
--- This will make the amalgamated script platform- and Lua version
--- dependent, obviously!
---
--- In some cases you may want to ignore automatically listed modules
--- in the cache without editing the cache file. Use the `-i` option
--- for that and specify a Lua pattern:
---
---     ./amalg.lua -o out.lua -s main.lua -c -i "^luarocks%."
---
--- The `-i` option can be used multiple times to specify multiple
--- patterns.
---
--- Usually, the amalgamated modules take precedence over locally
--- installed (possibly newer) versions of the same modules. If you
--- want to use local modules when available and only fall back to the
--- amalgamated code otherwise, you can specify the `-f` flag.
---
---     ./amalg.lua -o out.lua -s main.lua -c -f
---
--- This installs another searcher/loader function at the end of
--- `package.searchers` (or `package.loaders` on Lua 5.1) and adds
--- a new table `package.postload` that serves the same purpose as the
--- standard `package.preload` table.
---
--- To fix a compatibility issue with Lua 5.1's vararg handling,
--- `amalg.lua` by default adds a local alias to the global `arg` table
--- to every loaded module. If for some reason you don't want that, use
--- the `-a` flag (but be aware that in Lua 5.1 with `LUA_COMPAT_VARARG`
--- defined (the default) your modules can only access the global `arg`
--- table as `_G.arg`).
---
---     ./amalg.lua -o out.lua -a -s main.lua -c
---
--- There is also some compression/decompression support handled via
--- plugins to `amalg`. To select a transformation by name us the `-z`
--- option. The necessary decompression code typically is embedded in
--- the result and executed automatically (may depend on the plugin.)
---
---     ./amalg.lua -o out.lua -s main.lua -c -z brieflz
---
--- Some plugins generate valid Lua code (text or binary) and thus
--- don't need a decompression step. For those modules the `-t` option
--- should be used instead to reduce dead code in the resulting
--- amalgamation file. Multiple compression/transformation steps are
--- possible, and are executed in the given order.
---
---     ./amalg.lua -o out.lua -s main.lua -c -t luasrcdiet -t luac -z brieflz
---
--- Note that compression is usually most effective when applied to the
--- complete amalgamation script instead of just individual modules:
---
---     ./amalg.lua -s main.lua -c | ./amalg.lua -o out.lua -c- -t luasrcdiet -z brieflz
---
--- That's it. For further info consult the source.
---
---
 -- ## Implementation
 --
 
@@ -368,8 +218,8 @@ local function is_bytecode( path )
 end
 
 
--- Reads the whole contents of a file into memory without any
--- processing.
+-- The `readfile` funciton reads the whole contents of a file into
+-- memory without any processing.
 local function readfile( path, is_bin )
   local f = assert( io.open( path, is_bin and "rb" or "r" ) )
   local s = assert( f:read( "*a" ) )
@@ -415,7 +265,8 @@ end
 
 -- C extension modules and virtual resources may be embedded into the
 -- amalgamated script as well. Compression/decompression plugins are
--- applied, transformation plugins are skipped.
+-- applied, transformation plugins are skipped, because transformation
+-- plugins usually expect and produce Lua source code.
 local function readbinfile( path, plugins )
   local s = readfile( path, true )
   for _, p in ipairs( plugins ) do
@@ -500,7 +351,8 @@ end
 
 -- Every active plugin's inflate part is called on the code in the reverse
 -- order the deflate parts were executed on the input files. The closing
--- parentheses are not included in the resulting string
+-- parentheses are not included in the resulting string. The
+-- `close_inflate_calls` function below is responsible for those.
 local function open_inflate_calls( plugins )
   local s = ""
   for _, p in ipairs( plugins ) do
@@ -532,7 +384,9 @@ local function writeluamodule( out, m, path, plugins, tname, dbg, afix )
     -- function `load` (or `loadstring` in Lua 5.1). Since this
     -- preserves file name and line number information, this
     -- approach is used for all files if the debug mode is active
-    -- (`-d` command line option).
+    -- (`-d` command line option). This is also necessary if
+    -- decompression steps need to happen or if the final
+    -- transformation plugin produces Lua byte-code.
     out:write( "package.", tname, "[ ", qformat( m ),
                " ] = assert( (loadstring or load)(",
                open_inflate_calls( plugins ), " ",
@@ -661,7 +515,7 @@ end
 
   -- The inflate parts of every compression plugin must be included
   -- into the output. Later plugins can be compressed by plugins that
-  -- have already been loaded.
+  -- have already been processed.
   local active_plugins = {}
   for _,plugin in ipairs( plugins ) do
     if plugin[ 3 ] then
@@ -826,7 +680,19 @@ end
 
   -- virtual resources are embedded like dlls, and the Lua standard
   -- io functions are monkey-patched to search for embedded files
-  -- first.
+  -- first. The amalgamated script includes a complete implementation
+  -- of file io that works on strings embedded in the amalgamation if
+  -- (and only if) the file is opened in read-only mode.
+  -- To reduce the size of the embedded code, error handling is mostly
+  -- left out (since the resources are static, you can make sure that
+  -- no errors occurr). Also, emulating the IO library for four
+  -- different Lua versions on many different architectures and OSes
+  -- is very challenging. Therefore, there might be corner cases
+  -- where the virtual IO functions behave slightly differently than
+  -- the native IO functions. This applies in particular to the `"*n"`
+  -- format for `read` or `lines`.
+  -- In addition to file IO functions and methods, `loadfile` and
+  -- `dofile` are patched as well.
   if #vio > 0 then
     out:write( [=[
 do

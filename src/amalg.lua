@@ -9,14 +9,14 @@
 -- The name of the script used in warning messages and the name of the
 -- cache file can be configured here by changing these local
 -- variables:
-local prog = "amalg.lua"
-local cache = "amalg.cache"
+local PROGRAMNAME = "amalg.lua"
+local CACHEFILENAME = "amalg.cache"
 
 
 -- Wrong use of the command line may cause warnings to be printed to
 -- the console. This function is for printing those warnings:
 local function warn( ... )
-  io.stderr:write( "WARNING ", prog, ": " )
+  io.stderr:write( "WARNING ", PROGRAMNAME, ": " )
   local n = select( '#', ... )
   for i = 1, n do
     local v = tostring( (select( i, ... )) )
@@ -50,84 +50,85 @@ end
 -- Other arguments are assumed to be module names. For an inconsistent
 -- command line (e.g. duplicate options) a warning is printed to the
 -- console.
-local function parse_cmdline( ... )
-  local help, modules, afix, ignores, plugins, tname, vio, use_cache, cmods, dbg, script, oname, cname =
-        false, {}, true, {}, {}, "preload", {}
-  local plugin_set = {} -- to remove duplicates
+local function parsecommandline( ... )
+  local showhelp, modules, argfix, ignorepatterns, plugins, packagefieldname,
+        virtualresources, usecache, embedcmodules, debugmode, scriptname,
+        outputname, cachename = false, {}, true, {}, {}, "preload", {}
+  local pluginalreadyadded = {} -- to remove duplicates
 
-  local function set_oname( v )
+  local function setoutputname( v )
     if v then
-      if oname then
-        warn( "Resetting output file `"..oname.."'! Using `"..v.."' now!" )
+      if outputname then
+        warn( "Resetting output file `"..outputname.."'! Using `"..v.."' now!" )
       end
-      oname = v
+      outputname = v
     else
       warn( "Missing argument for -o option!" )
     end
   end
 
-  local function set_cname( v )
+  local function setcachefilename( v )
     if v then
-      if cname then
-        warn( "Resetting cache file `"..cname.."'! Using `"..v.."' now!" )
+      if cachename then
+        warn( "Resetting cache file `"..cachename.."'! Using `"..v.."' now!" )
       end
-      cname = v
+      cachename = v
     else
       warn( "Missing argument for -C option!" )
     end
   end
 
-  local function set_script( v )
+  local function setmainscript( v )
     if v then
-      if script then
-        warn( "Resetting main script `"..script.."'! Using `"..v.."' now!" )
+      if scriptname then
+        warn( "Resetting main script `"..scriptname.."'! Using `"..v.."' now!" )
       end
-      script = v
+      scriptname = v
     else
       warn( "Missing argument for -s option!" )
     end
   end
 
-  local function add_ignore( v )
+  local function addignorepattern( v )
     if v then
       if not pcall( string.match, "", v ) then
         warn( "Invalid Lua pattern: `"..v.."'" )
       else
-        ignores[ #ignores+1 ] = v
+        ignorepatterns[ #ignorepatterns+1 ] = v
       end
     else
       warn( "Missing argument for -i option!" )
     end
   end
 
-  local function add_transformation( v )
+  local function addtransformation( v )
     if v then
       require( "amalg."..v..".transform" )
-      if not plugin_set[ v ] then
+      if not pluginalreadyadded[ v ] then
         plugins[ #plugins+1 ] = { v, "transform" }
-        plugin_set[ v ] = true
+        pluginalreadyadded[ v ] = true
       end
     else
       warn( "Missing argument for -t option!" )
     end
   end
 
-  local function add_plugin( v )
+  local function addplugin( v )
     if v then
       require( "amalg."..v..".deflate" )
       require( "amalg."..v..".inflate" )
-      if not plugin_set[ v ] then
+      if not pluginalreadyadded[ v ] then
         plugins[ #plugins+1 ] = { v, "deflate", "inflate" }
-        plugin_set[ v ] = true
+        pluginalreadyadded[ v ] = true
       end
     else
       warn( "Missing argument for -z option!" )
     end
   end
 
-  local function add_vio( v )
+  local function addvirtualioresource( v )
     if v then
-      vio[ #vio+1 ] = v
+      virtualresources[ #virtualresources+1 ] = v
     else
       warn( "Missing argument for -v option!" )
     end
@@ -143,55 +144,55 @@ local function parse_cmdline( ... )
       break
     elseif a == "-h" then
       i = i + 1
-      help = true
+      showhelp = true
     elseif a == "-o" then
       i = i + 1
-      set_oname( i <= n and select( i, ... ) )
+      setoutputname( i <= n and select( i, ... ) )
     elseif a == "-s" then
       i = i + 1
-      set_script( i <= n and select( i, ... ) )
+      setmainscript( i <= n and select( i, ... ) )
     elseif a == "-i" then
       i = i + 1
-      add_ignore( i <= n and select( i, ... ) )
+      addignorepattern( i <= n and select( i, ... ) )
     elseif a == "-t" then
       i = i + 1
-      add_transformation( i <= n and select( i, ... ) )
+      addtransformation( i <= n and select( i, ... ) )
     elseif a == "-z" then
       i = i + 1
-      add_plugin( i <= n and select( i, ... ) )
+      addplugin( i <= n and select( i, ... ) )
     elseif a == "-v" then
       i = i + 1
-      add_vio( i <= n and select( i, ... ) )
+      addvirtualioresource( i <= n and select( i, ... ) )
     elseif a == "-f" then
-      tname = "postload"
+      packagefieldname = "postload"
     elseif a == "-c" then
-      use_cache = true
+      usecache = true
     elseif a == "-C" then
-      use_cache = true
+      usecache = true
       i = i + 1
-      set_cname( i <= n and select( i, ... ) )
+      setcachefilename( i <= n and select( i, ... ) )
     elseif a == "-x" then
-      cmods = true
+      embedcmodules = true
     elseif a == "-d" then
-      dbg = true
+      debugmode = true
     elseif a == "-a" then
-      afix = false
+      argfix = false
     else
       local prefix = a:sub( 1, 2 )
       if prefix == "-o" then
-        set_oname( a:sub( 3 ) )
+        setoutputname( a:sub( 3 ) )
       elseif prefix == "-s" then
-        set_script( a:sub( 3 ) )
+        setmainscript( a:sub( 3 ) )
       elseif prefix == "-i" then
-        add_ignore( a:sub( 3 ) )
+        addignorepattern( a:sub( 3 ) )
       elseif prefix == "-t" then
-        add_transformation( a:sub( 3 ) )
+        addtransformation( a:sub( 3 ) )
       elseif prefix == "-z" then
-        add_plugin( a:sub( 3 ) )
+        addplugin( a:sub( 3 ) )
       elseif prefix == "-v" then
-        add_vio( a:sub( 3 ) )
+        addvirtualioresource( a:sub( 3 ) )
       elseif prefix == "-C" then
-        set_cname( a:sub( 3 ) )
+        setcachefilename( a:sub( 3 ) )
       elseif a:sub( 1, 1 ) == "-" then
         warn( "Unknown command line flag: "..a )
       else
@@ -200,7 +201,9 @@ local function parse_cmdline( ... )
     end
     i = i + 1
   end
-  return help, oname, script, dbg, afix, use_cache, tname, ignores, plugins, cmods, modules, cname, vio
+  return showhelp, outputname, scriptname, debugmode, argfix, usecache,
+         packagefieldname, ignorepatterns, plugins, embedcmodules, modules,
+         cachename, virtualresources
 end
 
 
@@ -208,23 +211,23 @@ end
 -- the normal way of pasting the source code, so this function detects
 -- whether a file is a binary file (Lua bytecode starts with the `ESC`
 -- character):
-local function is_bytecode( path )
-  local f, res = io.open( path, "rb" ), false
-  if f then
-    res = f:read( 1 ) == "\027"
-    f:close()
+local function isbytecode( path )
+  local file, result = io.open( path, "rb" ), false
+  if file then
+    result = file:read( 1 ) == "\027"
+    file:close()
   end
-  return res
+  return result
 end
 
 
 -- The `readfile` funciton reads the whole contents of a file into
 -- memory without any processing.
-local function readfile( path, is_bin )
-  local f = assert( io.open( path, is_bin and "rb" or "r" ) )
-  local s = assert( f:read( "*a" ) )
-  f:close()
-  return s
+local function readfile( path, isbinary )
+  local file = assert( io.open( path, isbinary and "rb" or "r" ) )
+  local data = assert( file:read( "*a" ) )
+  file:close()
+  return data
 end
 
 
@@ -235,46 +238,48 @@ end
 -- Lua file and returns the contents as a Lua string. If there are
 -- compression/transformation plugins specified, the deflate parts of
 -- those plugins are executed on the file contents in the given order.
-local function readluafile( path, plugins, stdin_allowed )
-  local is_bin, s
-  if stdin_allowed and path == "-" then
-    s = assert( io.read( "*a" ) )
-    is_bin = s:sub( 1, 1 ) == "\027"
+local function readluafile( path, plugins, stdinallowed )
+  local isbinary, bytes
+  if stdinallowed and path == "-" then
+    bytes = assert( io.read( "*a" ) )
+    isbinary = bytes:sub( 1, 1 ) == "\027"
     path = "<stdin>"
   else
-    is_bin = is_bytecode( path )
-    s = readfile( path, is_bin )
+    isbinary = isbytecode( path )
+    bytes = readfile( path, isbinary )
   end
   local shebang
-  if not is_bin then
+  if not isbinary then
     -- Shebang lines are only supported by Lua at the very beginning
     -- of a source file, so they have to be removed before the source
     -- code can be embedded in the output.
-    shebang = s:match( "^(#![^\n]*)" )
-    s = s:gsub( "^#[^\n]*", "" )
+    shebang = bytes:match( "^(#![^\n]*)" )
+    bytes = bytes:gsub( "^#[^\n]*", "" )
   end
-  for _, p in ipairs( plugins ) do
-    if p[ 2 ] then
-      local r, b = require( "amalg."..p[ 1 ].."."..p[ 2 ] )( s, not is_bin, path )
-      s, is_bin = r, (is_bin or not b)
+  for _, pluginspec in ipairs( plugins ) do
+    if pluginspec[ 2 ] then
+      local pluginmodule = "amalg."..pluginspec[ 1 ].."."..pluginspec[ 2 ]
+      local r, b = require( pluginmodule )( bytes, not isbinary, path )
+      bytes, isbinary = r, (isbinary or not b)
     end
   end
-  return s, is_bin, shebang
+  return bytes, isbinary, shebang
 end
 
 
 -- C extension modules and virtual resources may be embedded into the
 -- amalgamated script as well. Compression/decompression plugins are
--- applied, transformation plugins are skipped, because transformation
+-- applied, transformation plugins are skipped because transformation
 -- plugins usually expect and produce Lua source code.
 local function readbinfile( path, plugins )
-  local s = readfile( path, true )
-  for _, p in ipairs( plugins ) do
-    if p[ 2 ] and p[ 3 ] then
-      s = require( "amalg."..p[ 1 ].."."..p[ 2 ] )( s, false, path )
+  local bytes = readfile( path, true )
+  for _, pluginspec in ipairs( plugins ) do
+    if pluginspec[ 2 ] and pluginspec[ 3 ] then
+      local pluginmodule = "amalg."..pluginspec[ 1 ].."."..pluginspec[ 2 ]
+      bytes = require( pluginmodule )( bytes, false, path )
     end
   end
-  return s
+  return bytes
 end
 
 
@@ -297,7 +302,7 @@ end
 -- file `amalg.cache` are used to specify the modules to embed. This
 -- function is used to load the cache file. `<filename>` is optional:
 local function readcache( filename )
-  local chunk = loadfile( filename or cache, "t", {} )
+  local chunk = loadfile( filename or CACHEFILENAME, "t", {} )
   if chunk then
     if setfenv then setfenv( chunk, {} ) end
     local result = chunk()
@@ -312,16 +317,16 @@ end
 -- modules that are `require`d and updates the cache file
 -- `amalg.cache`. This function saves the updated cache contents to
 -- the file:
-local function writecache( c )
-  local f = assert( io.open( cache, "w" ) )
-  f:write( "return {\n" )
-  for k,v in pairs( c ) do
+local function writecache( cache )
+  local file = assert( io.open( CACHEFILENAME, "w" ) )
+  file:write( "return {\n" )
+  for k, v in pairs( cache ) do
     if type( k ) == "string" and type( v ) == "string" then
-      f:write( "  [ ", qformat( k ), " ] = ", qformat( v ), ",\n" )
+      file:write( "  [ ", qformat( k ), " ] = ", qformat( v ), ",\n" )
     end
   end
-  f:write( "}\n" )
-  f:close()
+  file:write( "}\n" )
+  file:close()
 end
 
 
@@ -330,21 +335,21 @@ end
 -- library files for C modules. For Lua 5.1 a backport is provided.
 local searchpath = package.searchpath
 if not searchpath then
-  local delim = package.config:match( "^(.-)\n" ):gsub( "%%", "%%%%" )
+  local delimiter = package.config:match( "^(.-)\n" ):gsub( "%%", "%%%%" )
 
   function searchpath( name, path )
-    local pname = name:gsub( "%.", delim ):gsub( "%%", "%%%%" )
-    local msg = {}
+    local pname = name:gsub( "%.", delimiter ):gsub( "%%", "%%%%" )
+    local messages = {}
     for subpath in path:gmatch( "[^;]+" ) do
       local fpath = subpath:gsub( "%?", pname )
-      local f = io.open( fpath, "r" )
-      if f then
-        f:close()
+      local file = io.open( fpath, "r" )
+      if file then
+        file:close()
         return fpath
       end
-      msg[ #msg+1 ] = "\n\tno file '"..fpath.."'"
+      messages[ #messages+1 ] = "\n\tno file '"..fpath.."'"
     end
-    return nil, table.concat( msg )
+    return nil, table.concat( messages )
   end
 end
 
@@ -352,12 +357,13 @@ end
 -- Every active plugin's inflate part is called on the code in the reverse
 -- order the deflate parts were executed on the input files. The closing
 -- parentheses are not included in the resulting string. The
--- `close_inflate_calls` function below is responsible for those.
-local function open_inflate_calls( plugins )
+-- `closeinflatecalls` function below is responsible for those.
+local function openinflatecalls( plugins )
   local s = ""
-  for _, p in ipairs( plugins ) do
-    if p[ 3 ] then
-      s = s.." require( "..qformat( "amalg."..p[ 1 ].."."..p[ 3 ] ).." )("
+  for _, pluginspec in ipairs( plugins ) do
+    if pluginspec[ 3 ] then
+      local pluginmodule = "amalg."..pluginspec[ 1 ].."."..pluginspec[ 3 ]
+      s = s.." require( "..qformat( pluginmodule ).." )("
     end
   end
   return s
@@ -365,21 +371,22 @@ end
 
 
 -- The closing parentheses needed by the result of the
--- `open_inflate_calls` function above is generated by this function.
-local function close_inflate_calls( plugins )
-  local cnt = 0
-  for _, p in ipairs( plugins ) do
-    if p[ 3 ] then cnt = cnt + 1 end
+-- `openinflatecalls` function above is generated by this function.
+local function closeinflatecalls( plugins )
+  local count = 0
+  for _, pluginspec in ipairs( plugins ) do
+    if pluginspec[ 3 ] then count = count + 1 end
   end
-  return (" )"):rep( cnt )
+  return (" )"):rep( count )
 end
 
 
 -- Lua modules are written to the output file in a format that can be
 -- loaded by the Lua interpreter.
-local function writeluamodule( out, m, path, plugins, tname, dbg, afix )
-  local bytes, is_bin = readluafile( path, plugins )
-  if is_bin or dbg then
+local function writeluamodule( out, modulename, path, plugins,
+                               packagefieldname, debugmode, argfix )
+  local bytes, isbinary = readluafile( path, plugins )
+  if isbinary or debugmode then
     -- Precompiled Lua modules are loaded via the standard Lua
     -- function `load` (or `loadstring` in Lua 5.1). Since this
     -- preserves file name and line number information, this
@@ -387,10 +394,10 @@ local function writeluamodule( out, m, path, plugins, tname, dbg, afix )
     -- (`-d` command line option). This is also necessary if
     -- decompression steps need to happen or if the final
     -- transformation plugin produces Lua byte-code.
-    out:write( "package.", tname, "[ ", qformat( m ),
+    out:write( "package.", packagefieldname, "[ ", qformat( modulename ),
                " ] = assert( (loadstring or load)(",
-               open_inflate_calls( plugins ), " ",
-               qformat( bytes ), close_inflate_calls( plugins ),
+               openinflatecalls( plugins ), " ",
+               qformat( bytes ), closeinflatecalls( plugins ),
                ", '@'..", qformat( path ), " ) )\n\n" )
   else
     -- Under normal circumstances Lua files are pasted into a
@@ -406,9 +413,9 @@ local function writeluamodule( out, m, path, plugins, tname, dbg, afix )
     -- `amalg.lua` adds a local alias to the global `arg` table
     -- unless the `-a` command line flag is specified.
     out:write( "do\nlocal _ENV = _ENV\n",
-               "package.", tname, "[ ", qformat( m ),
+               "package.", packagefieldname, "[ ", qformat( modulename ),
                " ] = function( ... ) ",
-               afix and "local arg = _G.arg;\n" or "_ENV = _ENV;\n",
+               argfix and "local arg = _G.arg;\n" or "_ENV = _ENV;\n",
                bytes:gsub( "%s*$", "" ), "\nend\nend\n\n" )
   end
 end
@@ -419,12 +426,13 @@ end
 -- collects the module and script sources, and writes the amalgamated
 -- source.
 local function amalgamate( ... )
-  local help, oname, script, dbg, afix, use_cache, tname, ignores, plugins, cmods, modules, cname, vio =
-        parse_cmdline( ... )
+  local showhelp, outputname, scriptname, debugmode, argfix, usecache,
+        packagefieldname, ignorepatterns, plugins, embedcmodules,
+        modules, cachename, virtualresources = parsecommandline( ... )
   local errors = {}
 
 
-  if help then
+  if showhelp then
     print[[
 amalg.lua <options> [--] <modules...>
 
@@ -453,12 +461,12 @@ amalg.lua <options> [--] <modules...>
   -- When instructed to on the command line, the cache file is loaded,
   -- and the modules are added to the ones listed on the command line
   -- unless they are ignored via the `-i` command line option.
-  if use_cache then
-    local c = readcache( cname )
-    for k,v in pairs( c or {} ) do
+  if usecache then
+    local cache = readcache( cachename )
+    for k, v in pairs( cache or {} ) do
       local addmodule = true
-      for _,p in ipairs( ignores ) do
-        if k:match( p ) then
+      for _, pattern in ipairs( ignorepatterns ) do
+        if k:match( pattern ) then
           addmodule = false
           break
         end
@@ -470,8 +478,8 @@ amalg.lua <options> [--] <modules...>
   end
 
   local out = io.stdout
-  if oname and oname ~= "-" then
-    out = assert( io.open( oname, "w" ) )
+  if outputname and outputname ~= "-" then
+    out = assert( io.open( outputname, "w" ) )
   end
 
   -- If a main script is to be embedded, this includes the same
@@ -479,9 +487,9 @@ amalg.lua <options> [--] <modules...>
   -- resulting amalgamation can be run without explicitly
   -- specifying the interpreter on unixoid systems (if a shebang
   -- line was specified in the first place, that is).
-  local script_bytes, script_binary, shebang
-  if script then
-    script_bytes, script_binary, shebang = readluafile( script, plugins, true )
+  local scriptbytes, scriptisbinary, shebang
+  if scriptname then
+    scriptbytes, scriptisbinary, shebang = readluafile( scriptname, plugins, true )
     if shebang then
       out:write( shebang, "\n\n" )
     end
@@ -491,7 +499,7 @@ amalg.lua <options> [--] <modules...>
   -- amalgamated module are registered in table `package.postload`,
   -- and an extra searcher function is added at the end of
   -- `package.searchers`.
-  if tname == "postload" then
+  if packagefieldname == "postload" then
     out:write([=[
 do
 local assert = assert
@@ -516,46 +524,47 @@ end
   -- The inflate parts of every compression plugin must be included
   -- into the output. Later plugins can be compressed by plugins that
   -- have already been processed.
-  local active_plugins = {}
-  for _,plugin in ipairs( plugins ) do
-    if plugin[ 3 ] then
-      local m = "amalg."..plugin[ 1 ].."."..plugin[ 3 ]
-      local path, msg  = searchpath( m, package.path )
+  local activeplugins = {}
+  for _, pluginspec in ipairs( plugins ) do
+    if pluginspec[ 3 ] then
+      local pluginmodule = "amalg."..pluginspec[ 1 ].."."..pluginspec[ 3 ]
+      local path, message  = searchpath( pluginmodule, package.path )
       if not path then
-        error( "module `"..m.."' not found:"..msg )
+        error( "module `"..pluginmodule.."' not found:"..message )
       end
-      writeluamodule( out, m, path, active_plugins, "preload", false, false )
+      writeluamodule( out, pluginmodule, path, activeplugins, "preload" )
     end
-    active_plugins[ #active_plugins+1 ] = plugin
+    activeplugins[ #activeplugins+1 ] = pluginspec
   end
 
   -- Sorts modules alphabetically. Modules will be embedded in
   -- alphabetical order. This ensures deterministic output.
-  local module_names = {}
-  for m in pairs( modules ) do
-    module_names[ #module_names+1 ] = m
+  local modulenames = {}
+  for modulename in pairs( modules ) do
+    modulenames[ #modulenames+1 ] = modulename
   end
-  table.sort( module_names )
+  table.sort( modulenames )
 
   -- Every module given on the command line and/or in the cache file
   -- is processed.
-  for _,m in ipairs( module_names ) do
-    local t = modules[ m ]
+  for _, modulename in ipairs( modulenames ) do
+    local moduletype = modules[ modulename ]
     -- Only Lua modules are handled for now, so modules that are
     -- definitely C modules are skipped and handled later.
-    if t ~= "C" then
-      local path, msg  = searchpath( m, package.path )
-      if not path and (t == "L" or not cmods) then
+    if moduletype ~= "C" then
+      local path, message  = searchpath( modulename, package.path )
+      if not path and (moduletype == "L" or not embedcmodules) then
         -- The module is supposed to be a Lua module, but it cannot
         -- be found, so an error is raised.
-        error( "module `"..m.."' not found:"..msg )
+        error( "module `"..modulename.."' not found:"..message )
       elseif not path then
         -- Module possibly is a C module, so it is tried again later.
         -- But the current error message is saved in case the given
         -- name isn't a C module either.
-        modules[ m ], errors[ m ] = "C", msg
+        modules[ modulename ], errors[ modulename ] = "C", message
       else
-        writeluamodule( out, m, path, plugins, tname, dbg, afix )
+        writeluamodule( out, modulename, path, plugins,
+                        packagefieldname, debugmode, argfix )
       end
     end
   end
@@ -563,8 +572,8 @@ end
   -- If the `-x` command line flag is active, C modules are embedded
   -- as strings, and written out to temporary files on demand by the
   -- amalgamated code.
-  if cmods then
-    local nfuncs = {}
+  if embedcmodules then
+    local dllembedded = {}
     -- The amalgamation of C modules is split into two parts:
     -- One part generates a temporary file name for the C library
     -- and writes the binary code stored in the amalgamation to
@@ -619,18 +628,18 @@ local function temporarydll( code )
   return { tmpname, sentinel }
 end
 ]=]
-    for _,m in ipairs( module_names ) do
-      local t = modules[ m ]
-      if t == "C" then
+    for _, modulename in ipairs( modulenames ) do
+      local moduletype = modules[ modulename ]
+      if moduletype == "C" then
         -- Try a search strategy similar to the standard C module
         -- searcher first and then the all-in-one strategy to locate
         -- the library files for the C modules to embed.
-        local path, msg  = searchpath( m, package.cpath )
+        local path, message  = searchpath( modulename, package.cpath )
         if not path then
-          errors[ m ] = (errors[ m ] or "") .. msg
-          path, msg = searchpath( m:gsub( "%..*$", "" ), package.cpath )
+          errors[ modulename ] = (errors[ modulename ] or "") .. message
+          path, message = searchpath( modulename:gsub( "%..*$", "" ), package.cpath )
           if not path then
-            error( "module `"..m.."' not found:"..errors[ m ]..msg )
+            error( "module `"..modulename.."' not found:"..errors[ modulename ]..message )
           end
         end
         local qpath = qformat( path )
@@ -638,17 +647,17 @@ end
         -- There may be multiple candidates because of optional
         -- version information in the module names and the different
         -- approaches of the different Lua versions in handling that.
-        local openf = m:gsub( "%.", "_" )
+        local openf = modulename:gsub( "%.", "_" )
         local openf1, openf2 = openf:match( "^([^%-]*)%-(.*)$" )
-        if not nfuncs[ path ] then
+        if not dllembedded[ path ] then
           local code = readbinfile( path, plugins )
-          nfuncs[ path ] = true
+          dllembedded[ path ] = true
           local qcode = qformat( code )
           -- The `temporarydll` function saves the embedded binary
           -- code into a temporary file for later loading.
           out:write( prefix, "\ndlls[ ", qpath, " ] = temporarydll(",
-                             open_inflate_calls( plugins ), " ", qcode,
-                             close_inflate_calls( plugins ), " )\n" )
+                             openinflatecalls( plugins ), " ", qcode,
+                             closeinflatecalls( plugins ), " )\n" )
           prefix = ""
         end -- shared libary not embedded already
         -- Adds a function to `package.preload` to load the temporary
@@ -656,8 +665,8 @@ end
         -- behavior of Lua 5.3 which is to strip version information
         -- from the module name at the end first, and then at the
         -- beginning if that failed.
-        local qm = qformat( m )
-        out:write( "\npackage.", tname, "[ ", qm, " ] = function()\n",
+        local qm = qformat( modulename )
+        out:write( "\npackage.", packagefieldname, "[ ", qm, " ] = function()\n",
                    "  local dll = dlls[ ", qpath, " ][ 1 ]\n" )
         if openf1 then
           out:write( "  local loader = package_loadlib( dll, ",
@@ -676,9 +685,9 @@ end
     if prefix == "" then
       out:write( "end\n\n" )
     end
-  end -- if cmods
+  end -- if embedcmodules
 
-  -- virtual resources are embedded like dlls, and the Lua standard
+  -- Virtual resources are embedded like dlls, and the Lua standard
   -- io functions are monkey-patched to search for embedded files
   -- first. The amalgamated script includes a complete implementation
   -- of file io that works on strings embedded in the amalgamation if
@@ -693,7 +702,7 @@ end
   -- format for `read` or `lines`.
   -- In addition to file IO functions and methods, `loadfile` and
   -- `dofile` are patched as well.
-  if #vio > 0 then
+  if #virtualresources > 0 then
     out:write( [=[
 do
 local vfile = {}
@@ -807,32 +816,32 @@ function vfile:seek( whence, offset )
   return self.offset
 end
 ]=] )
-    for _,v in ipairs( vio ) do
+    for _, v in ipairs( virtualresources ) do
       local qdata = qformat( readbinfile( v, plugins ) )
       out:write( "\nvirtual[ ", qformat( v ), " ] =",
-                 open_inflate_calls( plugins ), " ", qdata,
-                 close_inflate_calls( plugins ), "\n" )
+                 openinflatecalls( plugins ), " ", qdata,
+                 closeinflatecalls( plugins ), "\n" )
     end
     out:write( "end\n\n" )
-  end -- if #vio
+  end -- if #virtualresources > 0
 
   -- If a main script is specified on the command line (`-s` flag),
-  -- embed it now that all dependent modules are available to
+  -- embed it now that all dependency modules are available to
   -- `require`.
-  if script then
-    if script_binary or dbg then
-      if script == "-" then script = "<stdin>" end
+  if scriptname then
+    if scriptisbinary or debugmode then
+      if scriptname == "-" then scriptname = "<stdin>" end
       out:write( "assert( (loadstring or load)(",
-                 open_inflate_calls( plugins ), " ",
-                 qformat( script_bytes ),
-                 close_inflate_calls( plugins ),
-                 ", '@'..", qformat( script ), " ) )( ... )\n\n" )
+                 openinflatecalls( plugins ), " ",
+                 qformat( scriptbytes ),
+                 closeinflatecalls( plugins ),
+                 ", '@'..", qformat( scriptname ), " ) )( ... )\n\n" )
     else
-      out:write( script_bytes )
+      out:write( scriptbytes )
     end
   end
 
-  if oname and oname ~= "-" then
+  if outputname and outputname ~= "-" then
     out:close()
   end
 end
@@ -849,39 +858,39 @@ local function collect()
   -- an error. The `luarocks.loader` module which inserts itself at
   -- position 1 in the `package.searchers` table is explicitly
   -- supported, though!
-  local off = 0
-  if package.loaded[ "luarocks.loader" ] then off = 1 end
-  assert( #searchers == 4+off, "package.searchers has been modified" )
-  local c = readcache() or {}
+  local offset = 0
+  if package.loaded[ "luarocks.loader" ] then offset = 1 end
+  assert( #searchers == 4+offset, "package.searchers has been modified" )
+  local cache = readcache() or {}
   -- The updated cache is written to disk when the following value is
   -- garbage collected, which should happen at `lua_close()`.
   local sentinel = newproxy and newproxy( true )
                             or setmetatable( {}, { __gc = true } )
-  getmetatable( sentinel ).__gc = function() writecache( c ) end
-  local lua_searcher = searchers[ 2+off ]
-  local c_searcher = searchers[ 3+off ]
-  local aio_searcher = searchers[ 4+off ] -- all in one searcher
+  getmetatable( sentinel ).__gc = function() writecache( cache ) end
+  local luasearcher = searchers[ 2+offset ]
+  local csearcher = searchers[ 3+offset ]
+  local aiosearcher = searchers[ 4+offset ] -- all in one searcher
 
-  local function rv_handler( tag, mname, ... )
+  local function addcacheentry( tag, mname, ... )
     if type( (...) ) == "function" then
-      c[ mname ] = tag
+      cache[ mname ] = tag
     end
     return ...
   end
 
   -- The replacement searchers just forward to the original versions,
   -- but also update the cache if the search was successful.
-  searchers[ 2+off ] = function( ... )
+  searchers[ 2+offset ] = function( ... )
     local _ = sentinel -- make sure that sentinel is an upvalue
-    return rv_handler( "L", ..., lua_searcher( ... ) )
+    return addcacheentry( "L", ..., luasearcher( ... ) )
   end
-  searchers[ 3+off ] = function( ... )
+  searchers[ 3+offset ] = function( ... )
     local _ = sentinel -- make sure that sentinel is an upvalue
-    return rv_handler( "C", ..., c_searcher( ... ) )
+    return addcacheentry( "C", ..., csearcher( ... ) )
   end
-  searchers[ 4+off ] = function( ... )
+  searchers[ 4+offset ] = function( ... )
     local _ = sentinel -- make sure that sentinel is an upvalue
-    return rv_handler( "C", ..., aio_searcher( ... ) )
+    return addcacheentry( "C", ..., aiosearcher( ... ) )
   end
 
   -- Since calling `os.exit` might skip the `lua_close()` call, the
@@ -890,7 +899,7 @@ local function collect()
   if type( os ) == "table" and type( os.exit ) == "function" then
     local os_exit = os.exit
     function os.exit( ... ) -- luacheck: ignore os
-      writecache( c )
+      writecache( cache )
       return os_exit( ... )
     end
   end
@@ -901,7 +910,7 @@ end
 -- module it uses the debug module to walk the call stack looking for
 -- a `require` call. If such a call is found, `amalg.lua` has been
 -- `require`d as a module.
-local function is_script()
+local function isscript()
   local i = 3
   local info = debug.getinfo( i, "f" )
   while info do
@@ -918,9 +927,8 @@ end
 -- This checks whether `amalg.lua` has been called as a script or
 -- loaded as a module and acts accordingly, by calling the
 -- corresponding main function:
-if is_script() then
+if isscript() then
   amalgamate( ... )
 else
   collect()
 end
-

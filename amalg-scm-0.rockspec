@@ -7,9 +7,10 @@ description = {
   summary = "Amalgamation for Lua modules/scripts.",
   detailed = [[
     This small Lua module/script can package a Lua script and its
-    dependencies as a single Lua file for easier deployment.
+    dependencies (Lua modules only) as a single Lua file for easier
+    deployment.
   ]],
-  homepage = "https://github.io/siffiejoe/lua-amalg/",
+  homepage = "https://github.com/siffiejoe/lua-amalg/",
   license = "MIT"
 }
 dependencies = {
@@ -30,3 +31,4 @@ build = {
     }
   }
 }
+

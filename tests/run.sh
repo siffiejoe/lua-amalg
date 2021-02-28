@@ -42,10 +42,25 @@ cat > vscript.lua <<'EOF'
 return 123
 EOF
 
+cat > require-stub.lua <<'EOF'
+do
+  local builtin_require = require
+  function require( ... )
+    io.stdout:write( "r " )
+    return builtin_require( ... )
+  end
+end
+EOF
+
 
 echo -n "amalgamate modules only ... "
 "$LUA" ../src/amalg.lua -o modules.lua module1 module2
 "$LUA" -l modules main.lua
+
+echo -n "amalgamate modules with require stub ... "
+"$LUA" ../src/amalg.lua -o stubbed.lua -p require-stub.lua module1 module2
+rm -f require-stub.lua
+"$LUA" -l stubbed main.lua
 
 echo -n "amalgamate modules as fallbacks(1) ... "
 "$LUA" ../src/amalg.lua -f -o fallbacks.lua module1 module2
@@ -115,6 +130,7 @@ if [ "$1" != keep ]; then
   rm -f module1.luac \
         module2.luac \
         modules.lua \
+        stubbed.lua \
         fallbacks.lua \
         textout.lua \
         binout.lua \

@@ -28,24 +28,26 @@ end
 -- Function for parsing the command line of `amalg.lua` when invoked
 -- as a script. The following flags are supported:
 --
--- *   `-h`: print help
--- *   `-o <file>`: specify output file (default is `stdout`)
--- *   `-s <file>`: specify main script to bundle
--- *   `-c`: add the modules listed in the cache file `amalg.cache`
--- *   `-C <file>`: add the modules listed in the cache file <file>
--- *   `-i <pattern>`: ignore modules in the cache file matching the
---     given pattern (can be given multiple times)
--- *   `-d`: enable debug mode (file names and line numbers in error
---     messages will point to the original location)
--- *   `-a`: do *not* apply the `arg` fix (local alias for the global
---     `arg` table)
--- *   `-f`: use embedded modules only as a fallback
--- *   `-x`: also embed compiled C modules
--- *   `-t <plugin>`: use transformation plugin
--- *   `-z <plugin>`: use compression plugin
--- *   `-v <file>`: embed as virtual resource
 -- *   `--`: stop parsing command line flags (all remaining arguments
 --     are considered module names)
+-- *   `-a`: do *not* apply the `arg` fix (local alias for the global
+--     `arg` table)
+-- *   `-c`: add the modules listed in the cache file `amalg.cache`
+-- *   `-C <file>`: add the modules listed in the cache file <file>
+-- *   `-d`: enable debug mode (file names and line numbers in error
+--     messages will point to the original location)
+-- *   `-f`: use embedded modules only as a fallback
+-- *   `-h`: print help
+-- *   `-i <pattern>`: ignore modules in the cache file matching the
+-- *   `-o <file>`: specify output file (default is `stdout`)
+-- *   `-p <file>`: use file contents as prefix code for the
+--     amalgamated script (i.e. usually as a package module stub)
+-- *   `-s <file>`: specify main script to bundle
+--     given pattern (can be given multiple times)
+-- *   `-t <plugin>`: use transformation plugin
+-- *   `-v <file>`: embed as virtual resource
+-- *   `-x`: also embed compiled C modules
+-- *   `-z <plugin>`: use compression plugin
 --
 -- Other arguments are assumed to be module names. For an inconsistent
 -- command line (e.g. duplicate options) a warning is printed to the
@@ -53,7 +55,7 @@ end
 local function parsecommandline( ... )
   local showhelp, modules, argfix, ignorepatterns, plugins, packagefieldname,
         virtualresources, usecache, embedcmodules, debugmode, scriptname,
-        outputname, cachename = false, {}, true, {}, {}, "preload", {}
+        outputname, cachename, prefixfile = false, {}, true, {}, {}, "preload", {}
   local pluginalreadyadded = {} -- to remove duplicates
 
   local function setoutputname( v )
@@ -86,6 +88,17 @@ local function parsecommandline( ... )
       scriptname = v
     else
       warn( "Missing argument for -s option!" )
+    end
+  end
+
+  local function setprefixname( v )
+    if v then
+      if prefixfile then
+        warn( "Resetting prefix file `"..prefixfile.."'! Using `"..v.."' now!" )
+      end
+      prefixfile = v
+    else
+      warn( "Missing argument for -p option!" )
     end
   end
 
@@ -148,6 +161,9 @@ local function parsecommandline( ... )
     elseif a == "-o" then
       i = i + 1
       setoutputname( i <= n and select( i, ... ) )
+    elseif a == "-p" then
+      i = i + 1
+      setprefixname( i <= n and select( i, ... ) )
     elseif a == "-s" then
       i = i + 1
       setmainscript( i <= n and select( i, ... ) )
@@ -181,6 +197,8 @@ local function parsecommandline( ... )
       local prefix = a:sub( 1, 2 )
       if prefix == "-o" then
         setoutputname( a:sub( 3 ) )
+      elseif prefix == "-p" then
+        setprefixname( a:sub( 3 ) )
       elseif prefix == "-s" then
         setmainscript( a:sub( 3 ) )
       elseif prefix == "-i" then
@@ -203,7 +221,7 @@ local function parsecommandline( ... )
   end
   return showhelp, outputname, scriptname, debugmode, argfix, usecache,
          packagefieldname, ignorepatterns, plugins, embedcmodules, modules,
-         cachename, virtualresources
+         cachename, prefixfile, virtualresources
 end
 
 
@@ -428,7 +446,7 @@ end
 local function amalgamate( ... )
   local showhelp, outputname, scriptname, debugmode, argfix, usecache,
         packagefieldname, ignorepatterns, plugins, embedcmodules,
-        modules, cachename, virtualresources = parsecommandline( ... )
+        modules, cachename, prefixname, virtualresources = parsecommandline( ... )
   local errors = {}
 
 
@@ -437,22 +455,24 @@ local function amalgamate( ... )
 amalg.lua <options> [--] <modules...>
 
   available options:
-    -h: print help/usage
-    -o <file>: write output to <file>
-    -s <file>: embed <file> as main script
+    -a: disable `arg` fix
     -c: take module names from `amalg.cache` cache file
     -C <file>: take module names from  <file>
+    -d: preserve file names and line numbers
+    -f: use embedded modules as fallback only
+    -h: print help/usage
     -i <pattern>: ignore matching modules from cache
       (can be specified multiple times)
-    -d: preserve file names and line numbers
-    -a: disable `arg` fix
-    -f: use embedded modules as fallback only
-    -x: also embed C modules
+    -o <file>: write output to <file>
+    -p <file>: add the file contents as prefix (very early)
+      in the amalgamation
+    -s <file>: embed <file> as main script
     -t <plugin>: use transformation plugin
       (can be specified multiple times)
-    -z <plugin>: use (de-)compression plugin
-      (can be specified multiple times)
     -v <file>: store <file> in amalgamation
+      (can be specified multiple times)
+    -x: also embed C modules
+    -z <plugin>: use (de-)compression plugin
       (can be specified multiple times)
 ]]
     return
@@ -493,6 +513,21 @@ amalg.lua <options> [--] <modules...>
     if shebang then
       out:write( shebang, "\n\n" )
     end
+  end
+
+  -- The `-p` command line switch allows to embed Lua code into the
+  -- amalgamation right behind the shebang line. This can be used to
+  -- provide stubs for the standard `package` module required for
+  -- the amalgamated script to work correctly in case the Lua
+  -- implementation does not provide a sufficient `package` module
+  -- implementation on its own. This is sometimes the case when Lua
+  -- is embedded into host programs (e.g. Redis, WoW, etc.). The bits
+  -- of the `package` module that are necessary depend on the command
+  -- line switches given, but you will need at least `package.preload`
+  -- and a `require` function that uses it.
+  if prefixname then
+    local prefix = readfile( prefixname )
+    out:write( prefix, "\n" )
   end
 
   -- If fallback loading is requested, the module loaders of the

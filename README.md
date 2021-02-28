@@ -268,7 +268,11 @@ its own `package.path` at runtime or changes its working directory.
 That's unfortunate. This tool relies on a working `require` function
 and a minimal `package` module. See [this stackoverflow post][12] for
 how you can provide minimal stubs for the World of Warcraft
-environment.
+environment. If you can't provide a shared `require` (and `package`)
+implementation in your environment, you can use the `-p <file>` switch
+to embed one very early in the amalgamation. Obviously this may cause
+problems if multiple scripts use this technique, so a common, shared
+approach is preferred.
 
   [12]: https://stackoverflow.com/questions/36871859/lua-emulating-the-require-function/36892318#36892318
 
@@ -305,3 +309,4 @@ license (the same license as Lua 5.1). The full license text follows:
     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+

@@ -38,9 +38,9 @@ There are alternatives to this program: See [squish][1], [soar][2],
 [luac.lua][3], [luacc][4], [many2one][5], and [bundle.lua][6] (and
 probably some more).
 
-  [1]: http://code.matthewwild.co.uk/squish/
+  [1]: https://code.matthewwild.co.uk/squish/
   [2]: http://lua-users.org/lists/lua-l/2012-02/msg00609.html
-  [3]: http://www.tecgraf.puc-rio.br/~lhf/ftp/lua/5.1/luac.lua
+  [3]: https://www.tecgraf.puc-rio.br/~lhf/ftp/lua/5.1/luac.lua
   [4]: https://github.com/mihacooper/luacc
   [5]: https://github.com/aryajur/many2one
   [6]: https://github.com/akavel/scissors/blob/master/tools/bundle/bundle.lua
@@ -167,8 +167,8 @@ That's it. For further info consult the source (there's a nice
 [annotated HTML file][7] rendered with [Docco][8] on the GitHub
 pages). Have fun!
 
-  [7]: http://siffiejoe.github.io/lua-amalg/
-  [8]: http://jashkenas.github.io/docco/
+  [7]: https://siffiejoe.github.io/lua-amalg/
+  [8]: https://ashkenas.com/docco/
 
 
 ##                              Plugins                             ##

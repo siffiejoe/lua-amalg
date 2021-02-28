@@ -2,6 +2,8 @@
 
 [![Test Status](https://github.com/siffiejoe/lua-amalg/workflows/run-tests/badge.svg)](https://github.com/siffiejoe/lua-amalg/actions?workflow=run-tests)
 [![Linter Status](https://github.com/siffiejoe/lua-amalg/workflows/run-linters/badge.svg)](https://github.com/siffiejoe/lua-amalg/actions?workflow=run-linters)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/siffiejoe/lua-amalg#license)
+![Lua Versions](https://img.shields.io/badge/Lua-5.1%20|%205.2%20|%205.3%20|%205.4-blue.svg)
 
 
 ##                           Introduction                           ##
@@ -303,4 +305,3 @@ license (the same license as Lua 5.1). The full license text follows:
     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-

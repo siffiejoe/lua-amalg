@@ -39,15 +39,18 @@ end
 -- *   `-f`: use embedded modules only as a fallback
 -- *   `-h`: print help
 -- *   `-i <pattern>`: ignore modules in the cache file matching the
+--     given pattern (can be given multiple times)
 -- *   `-o <file>`: specify output file (default is `stdout`)
 -- *   `-p <file>`: use file contents as prefix code for the
 --     amalgamated script (i.e. usually as a package module stub)
 -- *   `-s <file>`: specify main script to bundle
---     given pattern (can be given multiple times)
--- *   `-t <plugin>`: use transformation plugin
--- *   `-v <file>`: embed as virtual resource
+-- *   `-t <plugin>`: use transformation plugin (can be given multiple
+--     times)
+-- *   `-v <file>`: embed as virtual resource (can be given multiple
+--     times)
 -- *   `-x`: also embed compiled C modules
--- *   `-z <plugin>`: use compression plugin
+-- *   `-z <plugin>`: use (de-)compression plugin (can be given
+--     multiple times)
 --
 -- Other arguments are assumed to be module names. For an inconsistent
 -- command line (e.g. duplicate options) a warning is printed to the
@@ -534,7 +537,7 @@ local function amalgamate( ... )
   -- and an extra searcher function is added at the end of
   -- `package.searchers`.
   if packagefieldname == "postload" then
-    out:write([=[
+    out:write( [=[
 do
 local assert = assert
 local type = assert( type )

@@ -451,13 +451,12 @@ local function amalgamate( ... )
 
 
   if showhelp then
-    print[[
-amalg.lua <options> [--] <modules...>
+    print( ([[%s <options> [--] <modules...>
 
   available options:
     -a: disable `arg` fix
-    -c: take module names from `amalg.cache` cache file
-    -C <file>: take module names from  <file>
+    -c: take module names from `%s` cache file
+    -C <file>: take module names from <file>
     -d: preserve file names and line numbers
     -f: use embedded modules as fallback only
     -h: print help/usage
@@ -474,7 +473,7 @@ amalg.lua <options> [--] <modules...>
     -x: also embed C modules
     -z <plugin>: use (de-)compression plugin
       (can be specified multiple times)
-]]
+]]):format( PROGRAMNAME, CACHEFILENAME ) )
     return
   end
 
@@ -531,7 +530,7 @@ amalg.lua <options> [--] <modules...>
   end
 
   -- If fallback loading is requested, the module loaders of the
-  -- amalgamated module are registered in table `package.postload`,
+  -- amalgamated modules are registered in table `package.postload`,
   -- and an extra searcher function is added at the end of
   -- `package.searchers`.
   if packagefieldname == "postload" then

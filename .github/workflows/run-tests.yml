@@ -18,5 +18,26 @@ jobs:
       - uses: leafo/gh-actions-luarocks@v4
       - run: luarocks install luasrcdiet
       - run: luarocks install brieflz
-      - run: '( cd tests && ./run.sh "gh" )'
+      - run: '( cd tests && ./run.sh github keep )'
+      - uses: actions/upload-artifact@v2
+        with:
+          name: amalgamations
+          path: |
+            tests/modules-only.lua
+            tests/modules-with-stubbed-require.lua
+            tests/modules-as-fallbacks.lua
+            tests/modules-and-script.lua
+            tests/binary-modules-and-script.lua
+            tests/compiled-and-zipped.lua
+            tests/amalgamated-then-zipped.lua
+            tests/script-on-diet.lua
+            tests/no-arg-fix.lua
+            tests/with-debug-mode.lua
+            tests/modules-from-cache.lua
+            tests/lua-and-c-modules.lua
+            tests/lua-and-c-modules-zipped.lua
+            tests/lua-and-c-modules-amalgamated-then-zipped.lua
+            tests/with-ignored-modules.lua
+            tests/with-virtual-io.lua
+            tests/amalg.cache
 

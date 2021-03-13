@@ -55,18 +55,18 @@ EOF
 
 echo -n "amalgamate modules only ... "
 "$LUA" ../src/amalg.lua -o modules.lua module1 module2
-"$LUA" -l modules main.lua
+"$LUA" -l modules -e 'package.path=""' main.lua
 
 echo -n "amalgamate modules with require stub ... "
 "$LUA" ../src/amalg.lua -o stubbed.lua -p require-stub.lua module1 module2
 rm -f require-stub.lua
-"$LUA" -l stubbed main.lua
+"$LUA" -l stubbed -e 'package.path=""' main.lua
 
 echo -n "amalgamate modules as fallbacks(1) ... "
 "$LUA" ../src/amalg.lua -f -o fallbacks.lua module1 module2
 "$LUA" -l fallbacks main.lua
 echo -n "amalgamate modules as fallbacks(2) ... "
-"$LUA" -l fallbacks -e "package.path=''" main.lua
+"$LUA" -l fallbacks -e 'package.path=""' main.lua
 
 echo -n "amalgamate modules and script in text form ... "
 "$LUA" ../src/amalg.lua -o textout.lua -s main.lua module1 module2

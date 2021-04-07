@@ -119,9 +119,10 @@ local function parsecommandline( ... )
 
   local function addtransformation( v )
     if v then
-      require( "amalg."..v..".transform" )
+      local transform = "amalg."..v..".transform"
+      require( transform )
       if not pluginalreadyadded[ v ] then
-        plugins[ #plugins+1 ] = { v, "transform" }
+        plugins[ #plugins+1 ] = { transform }
         pluginalreadyadded[ v ] = true
       end
     else
@@ -129,12 +130,14 @@ local function parsecommandline( ... )
     end
   end
 
-  local function addplugin( v )
+  local function addcompression( v )
     if v then
-      require( "amalg."..v..".deflate" )
-      require( "amalg."..v..".inflate" )
+      local deflate = "amalg."..v..".deflate"
+      local inflate = "amalg."..v..".inflate"
+      require( deflate )
+      require( inflate )
       if not pluginalreadyadded[ v ] then
-        plugins[ #plugins+1 ] = { v, "deflate", "inflate" }
+        plugins[ #plugins+1 ] = { deflate, inflate }
         pluginalreadyadded[ v ] = true
       end
     else
@@ -178,7 +181,7 @@ local function parsecommandline( ... )
       addtransformation( i <= n and select( i, ... ) )
     elseif a == "-z" then
       i = i + 1
-      addplugin( i <= n and select( i, ... ) )
+      addcompression( i <= n and select( i, ... ) )
     elseif a == "-v" then
       i = i + 1
       addvirtualioresource( i <= n and select( i, ... ) )
@@ -209,7 +212,7 @@ local function parsecommandline( ... )
       elseif prefix == "-t" then
         addtransformation( a:sub( 3 ) )
       elseif prefix == "-z" then
-        addplugin( a:sub( 3 ) )
+        addcompression( a:sub( 3 ) )
       elseif prefix == "-v" then
         addvirtualioresource( a:sub( 3 ) )
       elseif prefix == "-C" then
@@ -278,11 +281,8 @@ local function readluafile( path, plugins, stdinallowed )
     bytes = bytes:gsub( "^#[^\n]*", "" )
   end
   for _, pluginspec in ipairs( plugins ) do
-    if pluginspec[ 2 ] then
-      local pluginmodule = "amalg."..pluginspec[ 1 ].."."..pluginspec[ 2 ]
-      local r, b = require( pluginmodule )( bytes, not isbinary, path )
-      bytes, isbinary = r, (isbinary or not b)
-    end
+    local r, b = require( pluginspec[ 1 ] )( bytes, not isbinary, path )
+    bytes, isbinary = r, (isbinary or not b)
   end
   return bytes, isbinary, shebang
 end
@@ -295,9 +295,8 @@ end
 local function readbinfile( path, plugins )
   local bytes = readfile( path, true )
   for _, pluginspec in ipairs( plugins ) do
-    if pluginspec[ 2 ] and pluginspec[ 3 ] then
-      local pluginmodule = "amalg."..pluginspec[ 1 ].."."..pluginspec[ 2 ]
-      bytes = require( pluginmodule )( bytes, false, path )
+    if pluginspec[ 2 ] then
+      bytes = require( pluginspec[ 1 ] )( bytes, false, path )
     end
   end
   return bytes
@@ -382,9 +381,8 @@ end
 local function openinflatecalls( plugins )
   local s = ""
   for _, pluginspec in ipairs( plugins ) do
-    if pluginspec[ 3 ] then
-      local pluginmodule = "amalg."..pluginspec[ 1 ].."."..pluginspec[ 3 ]
-      s = s.." require( "..qformat( pluginmodule ).." )("
+    if pluginspec[ 2 ] then
+      s = s.." require( "..qformat( pluginspec[ 2 ] ).." )("
     end
   end
   return s
@@ -396,7 +394,7 @@ end
 local function closeinflatecalls( plugins )
   local count = 0
   for _, pluginspec in ipairs( plugins ) do
-    if pluginspec[ 3 ] then count = count + 1 end
+    if pluginspec[ 2 ] then count = count + 1 end
   end
   return (" )"):rep( count )
 end
@@ -563,13 +561,12 @@ end
   -- have already been processed.
   local activeplugins = {}
   for _, pluginspec in ipairs( plugins ) do
-    if pluginspec[ 3 ] then
-      local pluginmodule = "amalg."..pluginspec[ 1 ].."."..pluginspec[ 3 ]
-      local path, message  = searchpath( pluginmodule, package.path )
+    if pluginspec[ 2 ] then
+      local path, message  = searchpath( pluginspec[ 2 ], package.path )
       if not path then
-        error( "module `"..pluginmodule.."' not found:"..message )
+        error( "module `"..pluginspec[ 2 ].."' not found:"..message )
       end
-      writeluamodule( out, pluginmodule, path, activeplugins, "preload" )
+      writeluamodule( out, pluginspec[ 2 ], path, activeplugins, "preload" )
     end
     activeplugins[ #activeplugins+1 ] = pluginspec
   end

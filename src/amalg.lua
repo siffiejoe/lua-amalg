@@ -276,8 +276,10 @@ local function readluafile( path, plugins, stdinallowed )
   if not isbinary then
     -- Shebang lines are only supported by Lua at the very beginning
     -- of a source file, so they have to be removed before the source
-    -- code can be embedded in the output.
-    shebang = bytes:match( "^(#![^\n]*)" )
+    -- code can be embedded in the output. A byte-order-marker is
+    -- removed as well if present.
+    bytes = bytes:gsub( "^\239\187\191", "" )
+    shebang = bytes:match( "^(#[^\n]*)" )
     bytes = bytes:gsub( "^#[^\n]*", "" )
   end
   for _, pluginspec in ipairs( plugins ) do

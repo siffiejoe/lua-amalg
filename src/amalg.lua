@@ -11,6 +11,9 @@
 -- variables:
 local PROGRAMNAME = "amalg.lua"
 local CACHEFILENAME = "amalg.cache"
+-- Lua 5.4 changed the format of the package.searchpath error message
+local LUAVERSION = tonumber( _VERSION:match( "(%d+%.%d+)" ) )
+local NOTFOUNDPREFIX = LUAVERSION < 5.4 and "" or "\n\t"
 
 
 -- Wrong use of the command line may cause warnings to be printed to
@@ -566,7 +569,7 @@ end
     if pluginspec[ 2 ] then
       local path, message  = searchpath( pluginspec[ 2 ], package.path )
       if not path then
-        error( "module `"..pluginspec[ 2 ].."' not found:"..message )
+        error( "module `"..pluginspec[ 2 ].."' not found:"..NOTFOUNDPREFIX..message )
       end
       writeluamodule( out, pluginspec[ 2 ], path, activeplugins, "preload" )
     end
@@ -592,12 +595,12 @@ end
       if not path and (moduletype == "L" or not embedcmodules) then
         -- The module is supposed to be a Lua module, but it cannot
         -- be found, so an error is raised.
-        error( "module `"..modulename.."' not found:"..message )
+        error( "module `"..modulename.."' not found:"..NOTFOUNDPREFIX..message )
       elseif not path then
         -- Module possibly is a C module, so it is tried again later.
         -- But the current error message is saved in case the given
         -- name isn't a C module either.
-        modules[ modulename ], errors[ modulename ] = "C", message
+        modules[ modulename ], errors[ modulename ] = "C", NOTFOUNDPREFIX..message
       else
         writeluamodule( out, modulename, path, plugins,
                         packagefieldname, debugmode, argfix )
@@ -672,10 +675,10 @@ end
         -- the library files for the C modules to embed.
         local path, message  = searchpath( modulename, package.cpath )
         if not path then
-          errors[ modulename ] = (errors[ modulename ] or "") .. message
+          errors[ modulename ] = (errors[ modulename ] or "")..NOTFOUNDPREFIX..message
           path, message = searchpath( modulename:gsub( "%..*$", "" ), package.cpath )
           if not path then
-            error( "module `"..modulename.."' not found:"..errors[ modulename ]..message )
+            error( "module `"..modulename.."' not found:"..errors[ modulename ]..NOTFOUNDPREFIX..message )
           end
         end
         local qpath = qformat( path )

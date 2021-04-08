@@ -520,7 +520,7 @@ local function amalgamate( ... )
   end
 
   -- The `-p` command line switch allows to embed Lua code into the
-  -- amalgamation right behind the shebang line. This can be used to
+  -- amalgamation right after the shebang line. This can be used to
   -- provide stubs for the standard `package` module required for
   -- the amalgamated script to work correctly in case the Lua
   -- implementation does not provide a sufficient `package` module

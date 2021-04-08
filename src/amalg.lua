@@ -455,7 +455,6 @@ local function amalgamate( ... )
         modules, cachename, prefixname, virtualresources = parsecommandline( ... )
   local errors = {}
 
-
   if showhelp then
     print( ([[%s <options> [--] <modules...>
 

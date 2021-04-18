@@ -107,6 +107,10 @@ echo -n "amalgamate Lua modules, Lua script and C modules ... "
 "$LUA" ../src/amalg.lua -o lua-and-c-modules.lua -s main.lua -c -x
 "$LUA" -e 'package.path,package.cpath="",""' lua-and-c-modules.lua
 
+echo -n "amalgamate Lua and MoonScript modules ... "
+"$LUA" -e 'package.path="./?.moon;../src/?.lua;"..package.path' ../src/amalg.lua -o lua-and-moonscript-modules.lua -s main.moon -c -t moonscript && \
+"$LUA" -e 'package.path=""' lua-and-moonscript-modules.lua
+
 echo -n "amalgamate Lua modules, Lua script and C modules compressed ... "
 "$LUA" -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o lua-and-c-modules-zipped.lua -s main.lua -c -x -t luasrcdiet -z brieflz && \
 "$LUA" -e 'package.path,package.cpath="",""' lua-and-c-modules-zipped.lua
@@ -141,6 +145,7 @@ if [ "$1" != keep ]; then
         with-debug-mode.lua \
         modules-from-cache.lua \
         lua-and-c-modules.lua \
+        lua-and-moonscript-modules.lua \
         lua-and-c-modules-zipped.lua \
         lua-and-c-modules-amalgamated-then-zipped.lua \
         with-ignored-modules.lua \

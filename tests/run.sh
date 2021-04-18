@@ -73,20 +73,20 @@ echo -n "amalgamate modules and script in text form ... "
 "$LUA" -e 'package.path=""' modules-and-script.lua
 
 echo -n "amalgamate modules and script in binary form ... "
-"$LUA" -e 'package.path = "./?.luac;"..package.path' ../src/amalg.lua -o binary-modules-and-script.lua -s main.lua module1 module2
+"$LUA" -e 'package.path="./?.luac;"..package.path' ../src/amalg.lua -o binary-modules-and-script.lua -s main.lua module1 module2
 "$LUA" -e 'package.path=""' binary-modules-and-script.lua
 
 echo -n "amalgamate and transform modules and script(1) ... "
-"$LUA" -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o compiled-and-zipped.lua -s main.lua -t luac -z brieflz module1 module2 && \
+"$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o compiled-and-zipped.lua -s main.lua -t luac -z brieflz module1 module2 && \
 "$LUA" -e 'package.path=""' compiled-and-zipped.lua
 
 echo -n "amalgamate and transform modules and script(2) ... "
-"$LUA" -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o script-on-diet.lua -s main.lua -t luasrcdiet module1 module2 && \
+"$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o script-on-diet.lua -s main.lua -t luasrcdiet module1 module2 && \
 "$LUA" -e 'package.path=""' script-on-diet.lua
 
 echo -n "amalgamate and transform in two steps ... "
 "$LUA" ../src/amalg.lua -o- -s main.lua module1 module2 | \
-"$LUA" -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o amalgamated-then-zipped.lua -s- -t luasrcdiet -z brieflz && \
+"$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o amalgamated-then-zipped.lua -s- -t luasrcdiet -z brieflz && \
 "$LUA" -e 'package.path=""' amalgamated-then-zipped.lua
 
 echo -n "amalgamate modules and script without arg fix ... "
@@ -98,7 +98,7 @@ echo -n "amalgamate modules and script with debug info ... "
 "$LUA" -e 'package.path=""' with-debug-mode.lua
 
 echo -n "collect module names using amalg.lua as a module ... "
-"$LUA" -e 'package.path = "../src/?.lua;"..package.path' -l amalg main.lua
+"$LUA" -e 'package.path="../src/?.lua;"..package.path' -l amalg main.lua
 echo -n "amalgamate modules and script using amalg.cache ... "
 "$LUA" ../src/amalg.lua -o modules-from-cache.lua -s main.lua -C amalg.cache
 "$LUA" -e 'package.path=""' modules-from-cache.lua
@@ -108,16 +108,16 @@ echo -n "amalgamate Lua modules, Lua script and C modules ... "
 "$LUA" -e 'package.path,package.cpath="",""' lua-and-c-modules.lua
 
 echo -n "amalgamate Lua and MoonScript modules ... "
-"$LUA" -e 'package.path="./?.moon;../src/?.lua;"..package.path' ../src/amalg.lua -o lua-and-moonscript-modules.lua -s main.moon -c -t moonscript && \
+"$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o lua-and-moonscript-modules.lua -s main.moon -c -t moonscript && \
 "$LUA" -e 'package.path=""' lua-and-moonscript-modules.lua
 
 echo -n "amalgamate Lua modules, Lua script and C modules compressed ... "
-"$LUA" -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o lua-and-c-modules-zipped.lua -s main.lua -c -x -t luasrcdiet -z brieflz && \
+"$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o lua-and-c-modules-zipped.lua -s main.lua -c -x -t luasrcdiet -z brieflz && \
 "$LUA" -e 'package.path,package.cpath="",""' lua-and-c-modules-zipped.lua
 
 echo -n "amalgamate Lua modules, Lua script and C modules in two steps ... "
 "$LUA" ../src/amalg.lua -o- -s main.lua -c -x | \
-"$LUA" -e 'package.path = "../src/?.lua;"..package.path' ../src/amalg.lua -o lua-and-c-modules-amalgamated-then-zipped.lua -s- -t luasrcdiet -z brieflz && \
+"$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o lua-and-c-modules-amalgamated-then-zipped.lua -s- -t luasrcdiet -z brieflz && \
 "$LUA" -e 'package.path,package.cpath="",""' lua-and-c-modules-amalgamated-then-zipped.lua
 
 echo -n "amalgamate Lua modules, but ignore C modules ... "

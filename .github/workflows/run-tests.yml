@@ -16,6 +16,8 @@ jobs:
         with:
           luaVersion: ${{ matrix.luaVersion }}
       - uses: leafo/gh-actions-luarocks@v4
+        with:
+          luarocksVersion: "3.7.0"
       - run: luarocks install luasrcdiet
       - run: luarocks install moonscript
       - run: luarocks install tl

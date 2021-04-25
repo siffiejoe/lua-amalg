@@ -16,7 +16,7 @@ return function( s, is_text, path )
       return code, true
     else
       if #result.syntax_errors > 0 then
-        local err = result.syntax_errors[1]
+        local err = result.syntax_errors[ 1 ]
         error( path..":"..err.y..":"..err.x..": "..err.msg )
       else
         error( path..": unknown error" )

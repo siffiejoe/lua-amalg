@@ -158,7 +158,7 @@ script, you can do so with virtual IO and the `-v` switch:
     ./amalg.lua -s main.lua -c -v template.txt
 
 This will embed `template.txt` in the amalgamated script and
-monky-patch the file IO functions if (and only if) the resource is
+monkey-patch the file IO functions if (and only if) the resource is
 opened *read-only*. This commandline switch may be used multiple times
 for multiple virtual resources. The file path has to match exactly or
 else normal file IO is used.
@@ -251,6 +251,31 @@ reduces the size of the resulting amalgamation script in many cases.
   [10]: https://luarocks.org/modules/jirutka/brieflz
   [11]: https://github.com/jibsen/brieflz
 
+###                        moonscript Plugin                       ###
+
+The `moonscript` plugin extends `package.path` when it is first loaded
+to search for `.moon` files in the same directories as for `.lua`
+files. `.moon` files take precedence. Then the plugin translates all
+non-binary modules and scripts from moonscript code to Lua code during
+amalgamation if the file name of the module or script ends in `.moon`.
+The Lua modules of the [moonscript compiler][12] are used for this
+translation, so it needs to be installed for the amalgamation step.
+Transformation plugins don't have a way to change the shebang lines of
+the amalgamated script, so you'll have to do that by hand if necessary.
+Since this plugin (as other similar transpiler transformation plugins)
+checks the input file extension, it can be used together with normal
+Lua input files and transpilers for other input languages.
+
+  [12]: https://luarocks.org/modules/leafo/moonscript
+
+###                           Teal Plugin                          ###
+
+The `teal` plugin works in a similar way as the `moonscript` plugin,
+but is searches for and processes `.tl` files only. The [`tl.lua`][13]
+module is used for the source code transformation.
+
+  [13]: https://luarocks.org/modules/hisham/tl
+
 
 ##                          Troubleshooting                         ##
 
@@ -266,7 +291,7 @@ its own `package.path` at runtime or changes its working directory.
 > My environment does not support `require` or the `package` module!
 
 That's unfortunate. This tool relies on a working `require` function
-and a minimal `package` module. See [this stackoverflow post][12] for
+and a minimal `package` module. See [this stackoverflow post][14] for
 how you can provide minimal stubs for the World of Warcraft
 environment. If you can't provide a shared `require` (and `package`)
 implementation in your environment, you can use the `-p <file>` switch
@@ -274,7 +299,7 @@ to embed one very early in the amalgamation. Obviously this may cause
 problems if multiple scripts use this technique, so a common, shared
 approach is preferred.
 
-  [12]: https://stackoverflow.com/questions/36871859/lua-emulating-the-require-function/36892318#36892318
+  [14]: https://stackoverflow.com/questions/36871859/lua-emulating-the-require-function/36892318#36892318
 
 
 ##                              Contact                             ##

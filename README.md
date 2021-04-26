@@ -204,7 +204,7 @@ the amalgamation for the decompression step during runtime. This
 module exports a function taking the compressed input as a string and
 returning the decompressed output as string as well.
 
-There are currently three predefined plugins available:
+There are currently a few predefined plugins available:
 
 ###                           luac Plugin                          ###
 

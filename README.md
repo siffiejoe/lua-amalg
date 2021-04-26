@@ -268,7 +268,7 @@ Lua input files and transpilers for other input languages.
 
   [12]: https://luarocks.org/modules/leafo/moonscript
 
-###                           Teal Plugin                          ###
+###                           teal Plugin                          ###
 
 The `teal` plugin works in a similar way as the `moonscript` plugin,
 but is searches for and processes `.tl` files only. The [`tl.lua`][13]

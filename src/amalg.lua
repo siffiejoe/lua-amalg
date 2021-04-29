@@ -33,27 +33,32 @@ end
 --
 -- *   `--`: stop parsing command line flags (all remaining arguments
 --     are considered module names)
--- *   `-a`: do *not* apply the `arg` fix (local alias for the global
---     `arg` table)
--- *   `-c`: add the modules listed in the cache file `amalg.cache`
--- *   `-C <file>`: add the modules listed in the cache file <file>
--- *   `-d`: enable debug mode (file names and line numbers in error
---     messages will point to the original location)
--- *   `-f`: use embedded modules only as a fallback
--- *   `-h`: print help
--- *   `-i <pattern>`: ignore modules in the cache file matching the
---     given pattern (can be given multiple times)
--- *   `-o <file>`: specify output file (default is `stdout`)
--- *   `-p <file>`: use file contents as prefix code for the
---     amalgamated script (i.e. usually as a package module stub)
--- *   `-s <file>`: specify main script to bundle
--- *   `-t <plugin>`: use transformation plugin (can be given multiple
+-- *   `-a`, `--no-argfix`: do *not* apply the `arg` fix (local alias
+--     for the global `arg` table)
+-- *   `-c`, `--use-cache`: add the modules listed in the cache file
+--     `amalg.cache`
+-- *   `-C <file>`, `--cache-file=<file>`: add the modules listed in
+--     the cache file <file>
+-- *   `-d`, `--debug`: enable debug mode (file names and line numbers
+--     in error messages will point to the original location)
+-- *   `-f`, `--fallback`: use embedded modules only as a fallback
+-- *   `-h`, `--help`: print help
+-- *   `-i <pattern>`, `--ignore=<pattern>`: ignore modules in the
+--     cache file matching the given pattern (can be given multiple
 --     times)
--- *   `-v <file>`: embed as virtual resource (can be given multiple
---     times)
--- *   `-x`: also embed compiled C modules
--- *   `-z <plugin>`: use (de-)compression plugin (can be given
---     multiple times)
+-- *   `-o <file>`, `--output=<file>`: specify output file (default is
+--     `stdout`)
+-- *   `-p <file>`, `--prefix=<file>`: use file contents as prefix
+--     code for the amalgamated script (i.e. usually as a package
+--     module stub)
+-- *   `-s <file>`, `--script=<file>`: specify main script to bundle
+-- *   `-t <plugin>`, `--transform=<plugin>`: use transformation
+--     plugin (can be given multiple times)
+-- *   `-v <file>`, `--virtual-io=<file>`: embed as virtual resource
+--     (can be given multiple times)
+-- *   `-x`, `--c-libs`: also embed compiled C modules
+-- *   `-z <plugin>`, `--zip=<plugin>`: use (de-)compression plugin
+--     (can be given multiple times)
 --
 -- Other arguments are assumed to be module names. For an inconsistent
 -- command line (e.g. duplicate options) a warning is printed to the
@@ -71,7 +76,7 @@ local function parsecommandline( ... )
       end
       outputname = v
     else
-      warn( "Missing argument for -o option!" )
+      warn( "Missing argument for -o/--output option!" )
     end
   end
 
@@ -82,7 +87,7 @@ local function parsecommandline( ... )
       end
       cachename = v
     else
-      warn( "Missing argument for -C option!" )
+      warn( "Missing argument for -C/--cache-file option!" )
     end
   end
 
@@ -93,7 +98,7 @@ local function parsecommandline( ... )
       end
       scriptname = v
     else
-      warn( "Missing argument for -s option!" )
+      warn( "Missing argument for -s/--script option!" )
     end
   end
 
@@ -104,7 +109,7 @@ local function parsecommandline( ... )
       end
       prefixfile = v
     else
-      warn( "Missing argument for -p option!" )
+      warn( "Missing argument for -p/--prefix option!" )
     end
   end
 
@@ -116,7 +121,7 @@ local function parsecommandline( ... )
         ignorepatterns[ #ignorepatterns+1 ] = v
       end
     else
-      warn( "Missing argument for -i option!" )
+      warn( "Missing argument for -i/--ignore option!" )
     end
   end
 
@@ -129,7 +134,7 @@ local function parsecommandline( ... )
         pluginalreadyadded[ v ] = true
       end
     else
-      warn( "Missing argument for -t option!" )
+      warn( "Missing argument for -t/--transform option!" )
     end
   end
 
@@ -144,7 +149,7 @@ local function parsecommandline( ... )
         pluginalreadyadded[ v ] = true
       end
     else
-      warn( "Missing argument for -z option!" )
+      warn( "Missing argument for -z/--zip option!" )
     end
   end
 
@@ -152,7 +157,7 @@ local function parsecommandline( ... )
     if v then
       virtualresources[ #virtualresources+1 ] = v
     else
-      warn( "Missing argument for -v option!" )
+      warn( "Missing argument for -v/--virtual-io option!" )
     end
   end
 
@@ -164,43 +169,43 @@ local function parsecommandline( ... )
         modules[ select( j, ... ) ] = true
       end
       break
-    elseif a == "-h" then
+    elseif a == "-h" or a == "--help" then
       i = i + 1
       showhelp = true
-    elseif a == "-o" then
+    elseif a == "-o" or a == "--output" then
       i = i + 1
       setoutputname( i <= n and select( i, ... ) )
-    elseif a == "-p" then
+    elseif a == "-p" or a == "--prefix" then
       i = i + 1
       setprefixname( i <= n and select( i, ... ) )
-    elseif a == "-s" then
+    elseif a == "-s" or a == "--script" then
       i = i + 1
       setmainscript( i <= n and select( i, ... ) )
-    elseif a == "-i" then
+    elseif a == "-i" or a == "--ignore" then
       i = i + 1
       addignorepattern( i <= n and select( i, ... ) )
-    elseif a == "-t" then
+    elseif a == "-t" or a == "--transform" then
       i = i + 1
       addtransformation( i <= n and select( i, ... ) )
-    elseif a == "-z" then
+    elseif a == "-z" or a == "--zip" then
       i = i + 1
       addcompression( i <= n and select( i, ... ) )
-    elseif a == "-v" then
+    elseif a == "-v" or a == "--virtual-io" then
       i = i + 1
       addvirtualioresource( i <= n and select( i, ... ) )
-    elseif a == "-f" then
+    elseif a == "-f" or a == "--fallback" then
       packagefieldname = "postload"
-    elseif a == "-c" then
+    elseif a == "-c" or a == "--use-cache" then
       usecache = true
-    elseif a == "-C" then
+    elseif a == "-C" or a == "--cache-file" then
       usecache = true
       i = i + 1
       setcachefilename( i <= n and select( i, ... ) )
-    elseif a == "-x" then
+    elseif a == "-x" or a == "--c-libs" then
       embedcmodules = true
-    elseif a == "-d" then
+    elseif a == "-d" or a == "--debug" then
       debugmode = true
-    elseif a == "-a" then
+    elseif a == "-a" or a == "--no-argfix" then
       argfix = false
     else
       local prefix = a:sub( 1, 2 )
@@ -219,9 +224,30 @@ local function parsecommandline( ... )
       elseif prefix == "-v" then
         addvirtualioresource( a:sub( 3 ) )
       elseif prefix == "-C" then
+        usecache = true
         setcachefilename( a:sub( 3 ) )
       elseif a:sub( 1, 1 ) == "-" then
-        warn( "Unknown command line flag: "..a )
+        local option, value = a:match( "^(%-%-[%w%-]+)=(.*)$" )
+        if option == "--output" then
+          setoutputname( value )
+        elseif option == "--prefix" then
+          setprefixname( value )
+        elseif option == "--script" then
+          setmainscript( value )
+        elseif option == "--ignore" then
+          addignorepattern( value )
+        elseif option == "--transform" then
+          addtransformation( value )
+        elseif option == "--zip" then
+          addcompression( value )
+        elseif option == "--virtual-io" then
+          addvirtualioresource( value )
+        elseif option == "--cache-file" then
+          usecache = true
+          setcachefilename( value )
+        else
+          warn( "Unknown/invalid command line flag: "..a )
+        end
       else
         modules[ a ] = true
       end
@@ -459,24 +485,24 @@ local function amalgamate( ... )
     print( ([[%s <options> [--] <modules...>
 
   available options:
-    -a: disable `arg` fix
-    -c: take module names from `%s` cache file
-    -C <file>: take module names from <file>
-    -d: preserve file names and line numbers
-    -f: use embedded modules as fallback only
-    -h: print help/usage
-    -i <pattern>: ignore matching modules from cache
+    -a, --no-argfix: disable `arg` fix
+    -c, --use-cache: take module names from `%s` cache file
+    -C <file>, --cache-file=<file>: take module names from <file>
+    -d, --debug: preserve file names and line numbers
+    -f, --fallback: use embedded modules as fallback only
+    -h, --help: print help/usage
+    -i <pattern>, --ignore=<pattern>: ignore matching modules from
+      cache (can be specified multiple times)
+    -o <file>, --output=<file>: write output to <file>
+    -p <file>, --prefix=<file>: add the file contents as prefix
+      (very early) in the amalgamation
+    -s <file>, --script=<file>: embed <file> as main script
+    -t <plugin>, --transform=<plugin>: use transformation plugin
       (can be specified multiple times)
-    -o <file>: write output to <file>
-    -p <file>: add the file contents as prefix (very early)
-      in the amalgamation
-    -s <file>: embed <file> as main script
-    -t <plugin>: use transformation plugin
+    -v <file>, --virtual-io=<file>: store <file> in amalgamation
       (can be specified multiple times)
-    -v <file>: store <file> in amalgamation
-      (can be specified multiple times)
-    -x: also embed C modules
-    -z <plugin>: use (de-)compression plugin
+    -x, --c-libs: also embed C modules
+    -z <plugin>, --zip=<plugin>: use (de-)compression plugin
       (can be specified multiple times)
 ]]):format( PROGRAMNAME, CACHEFILENAME ) )
     return

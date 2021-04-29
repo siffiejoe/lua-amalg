@@ -58,12 +58,12 @@ echo -n "amalgamate modules only ... "
 "$LUA" -l modules-only -e 'package.path=""' main.lua
 
 echo -n "amalgamate modules with require stub ... "
-"$LUA" ../src/amalg.lua -o modules-with-stubbed-require.lua -p require-stub.lua module1 module2
+"$LUA" ../src/amalg.lua --output=modules-with-stubbed-require.lua --prefix=require-stub.lua module1 module2
 rm -f require-stub.lua
 "$LUA" -l modules-with-stubbed-require -e 'package.path=""' main.lua
 
 echo -n "amalgamate modules as fallbacks(1) ... "
-"$LUA" ../src/amalg.lua -f -o modules-as-fallbacks.lua module1 module2
+"$LUA" ../src/amalg.lua --fallback --output modules-as-fallbacks.lua module1 module2
 "$LUA" -l modules-as-fallbacks main.lua
 echo -n "amalgamate modules as fallbacks(2) ... "
 "$LUA" -l modules-as-fallbacks -e 'package.path=""' main.lua
@@ -73,7 +73,7 @@ echo -n "amalgamate modules and script in text form ... "
 "$LUA" -e 'package.path=""' modules-and-script.lua
 
 echo -n "amalgamate modules and script in binary form ... "
-"$LUA" -e 'package.path="./?.luac;"..package.path' ../src/amalg.lua -o binary-modules-and-script.lua -s main.lua module1 module2
+"$LUA" -e 'package.path="./?.luac;"..package.path' ../src/amalg.lua -o binary-modules-and-script.lua --script main.lua module1 module2
 "$LUA" -e 'package.path=""' binary-modules-and-script.lua
 
 echo -n "amalgamate and transform modules and script(1) ... "
@@ -86,25 +86,25 @@ echo -n "amalgamate and transform modules and script(2) ... "
 
 echo -n "amalgamate and transform in two steps ... "
 "$LUA" ../src/amalg.lua -o- -s main.lua module1 module2 | \
-"$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o amalgamated-then-zipped.lua -s- -t luasrcdiet -z brieflz && \
+"$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o amalgamated-then-zipped.lua -s- --transform=luasrcdiet --zip=brieflz && \
 "$LUA" -e 'package.path=""' amalgamated-then-zipped.lua
 
 echo -n "amalgamate modules and script without arg fix ... "
-"$LUA" ../src/amalg.lua -o no-arg-fix.lua -a -s main.lua module1 module2
+"$LUA" ../src/amalg.lua -o no-arg-fix.lua --no-argfix -s main.lua module1 module2
 "$LUA" -e 'package.path=""' no-arg-fix.lua
 
 echo -n "amalgamate modules and script with debug info ... "
-"$LUA" ../src/amalg.lua -o with-debug-mode.lua -d -s main.lua module1 module2
+"$LUA" ../src/amalg.lua -o with-debug-mode.lua --debug -s main.lua module1 module2
 "$LUA" -e 'package.path=""' with-debug-mode.lua
 
 echo -n "collect module names using amalg.lua as a module ... "
 "$LUA" -e 'package.path="../src/?.lua;"..package.path' -l amalg main.lua
 echo -n "amalgamate modules and script using amalg.cache ... "
-"$LUA" ../src/amalg.lua -o modules-from-cache.lua -s main.lua -C amalg.cache
+"$LUA" ../src/amalg.lua -o modules-from-cache.lua -s main.lua --cache-file=amalg.cache
 "$LUA" -e 'package.path=""' modules-from-cache.lua
 
 echo -n "amalgamate Lua modules, Lua script and C modules ... "
-"$LUA" ../src/amalg.lua -o lua-and-c-modules.lua -s main.lua -c -x
+"$LUA" ../src/amalg.lua -o lua-and-c-modules.lua -s main.lua --use-cache --c-libs
 "$LUA" -e 'package.path,package.cpath="",""' lua-and-c-modules.lua
 
 echo -n "amalgamate Lua and MoonScript modules ... "
@@ -125,11 +125,11 @@ echo -n "amalgamate Lua modules, Lua script and C modules in two steps ... "
 "$LUA" -e 'package.path,package.cpath="",""' lua-and-c-modules-amalgamated-then-zipped.lua
 
 echo -n "amalgamate Lua modules, but ignore C modules ... "
-"$LUA" ../src/amalg.lua -o with-ignored-modules.lua -s main.lua -c -x -i '^cmod' -i '^aiomod'
+"$LUA" ../src/amalg.lua -o with-ignored-modules.lua -s main.lua -c -x --ignore='^cmod' -i '^aiomod'
 "$LUA" -e 'package.path=""' with-ignored-modules.lua
 
 echo -n "amalgamate with virtual IO ... "
-"$LUA" ../src/amalg.lua -o with-virtual-io.lua -s vio.lua -v data.txt -v vscript.lua
+"$LUA" ../src/amalg.lua -o with-virtual-io.lua -s vio.lua --virtual-io data.txt -v vscript.lua
 rm -f data.txt vscript.lua
 "$LUA" with-virtual-io.lua
 

@@ -73,7 +73,7 @@ echo -n "amalgamate modules and script in text form ... "
 "$LUA" -e 'package.path=""' modules-and-script.lua
 
 echo -n "amalgamate modules and script in binary form ... "
-"$LUA" -e 'package.path="./?.luac;"..package.path' ../src/amalg.lua -o binary-modules-and-script.lua --script main.lua module1 module2
+"$LUA" -e 'package.path="./?.luac;"..package.path' ../src/amalg.lua -o binary-modules-and-script.lua --script main.lua --shebang="" module1 module2
 "$LUA" -e 'package.path=""' binary-modules-and-script.lua
 
 echo -n "amalgamate and transform modules and script(1) ... "
@@ -108,7 +108,7 @@ echo -n "amalgamate Lua modules, Lua script and C modules ... "
 "$LUA" -e 'package.path,package.cpath="",""' lua-and-c-modules.lua
 
 echo -n "amalgamate Lua and MoonScript modules ... "
-"$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o lua-and-moonscript-modules.lua -s main.moon -c -t moonscript && \
+"$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o lua-and-moonscript-modules.lua -s main.moon -S "/usr/bin/env lua" -c -t moonscript && \
 "$LUA" -e 'package.path=""' lua-and-moonscript-modules.lua
 
 echo -n "amalgamate Lua and Teal modules ... "

@@ -52,6 +52,8 @@ end
 --     code for the amalgamated script (i.e. usually as a package
 --     module stub)
 -- *   `-s <file>`, `--script=<file>`: specify main script to bundle
+-- *   `-S <shebang>`, `--shebang=<shebang>`: Specify shebang line to
+--     use for the resulting script
 -- *   `-t <plugin>`, `--transform=<plugin>`: use transformation
 --     plugin (can be given multiple times)
 -- *   `-v <file>`, `--virtual-io=<file>`: embed as virtual resource
@@ -65,7 +67,7 @@ end
 -- console.
 local function parsecommandline( ... )
   local showhelp, modules, argfix, ignorepatterns, plugins, packagefieldname,
-        virtualresources, usecache, embedcmodules, debugmode, scriptname,
+        virtualresources, usecache, embedcmodules, debugmode, scriptname, shebang,
         outputname, cachename, prefixfile = false, {}, true, {}, {}, "preload", {}
   local pluginalreadyadded = {} -- to remove duplicates
 
@@ -99,6 +101,17 @@ local function parsecommandline( ... )
       scriptname = v
     else
       warn( "Missing argument for -s/--script option!" )
+    end
+  end
+
+  local function setshebang( v )
+    if v then
+      if shebang then
+        warn( "Resetting shebang line `"..shebang.."'! Using `"..v.."' now!" )
+      end
+      shebang = v
+    else
+      warn( "Missing argument for -S/--shebang option!" )
     end
   end
 
@@ -181,6 +194,9 @@ local function parsecommandline( ... )
     elseif a == "-s" or a == "--script" then
       i = i + 1
       setmainscript( i <= n and select( i, ... ) )
+    elseif a == "-S" or a == "--shebang" then
+      i = i + 1
+      setshebang( i <= n and select( i, ... ) )
     elseif a == "-i" or a == "--ignore" then
       i = i + 1
       addignorepattern( i <= n and select( i, ... ) )
@@ -215,6 +231,8 @@ local function parsecommandline( ... )
         setprefixname( a:sub( 3 ) )
       elseif prefix == "-s" then
         setmainscript( a:sub( 3 ) )
+      elseif prefix == "-S" then
+        setshebang( a:sub( 3 ) )
       elseif prefix == "-i" then
         addignorepattern( a:sub( 3 ) )
       elseif prefix == "-t" then
@@ -234,6 +252,8 @@ local function parsecommandline( ... )
           setprefixname( value )
         elseif option == "--script" then
           setmainscript( value )
+        elseif option == "--shebang" then
+          setshebang( value )
         elseif option == "--ignore" then
           addignorepattern( value )
         elseif option == "--transform" then
@@ -256,7 +276,7 @@ local function parsecommandline( ... )
   end
   return showhelp, outputname, scriptname, debugmode, argfix, usecache,
          packagefieldname, ignorepatterns, plugins, embedcmodules, modules,
-         cachename, prefixfile, virtualresources
+         cachename, prefixfile, virtualresources, shebang
 end
 
 
@@ -478,7 +498,8 @@ end
 local function amalgamate( ... )
   local showhelp, outputname, scriptname, debugmode, argfix, usecache,
         packagefieldname, ignorepatterns, plugins, embedcmodules,
-        modules, cachename, prefixname, virtualresources = parsecommandline( ... )
+        modules, cachename, prefixname, virtualresources, newshebang
+        = parsecommandline( ... )
   local errors = {}
 
   if showhelp then
@@ -497,6 +518,7 @@ local function amalgamate( ... )
     -p <file>, --prefix=<file>: add the file contents as prefix
       (very early) in the amalgamation
     -s <file>, --script=<file>: embed <file> as main script
+    -S <shebang>, --shebang=<shebang>: specify shebang line to use
     -t <plugin>, --transform=<plugin>: use transformation plugin
       (can be specified multiple times)
     -v <file>, --virtual-io=<file>: store <file> in amalgamation
@@ -540,6 +562,15 @@ local function amalgamate( ... )
   local scriptbytes, scriptisbinary, shebang
   if scriptname then
     scriptbytes, scriptisbinary, shebang = readluafile( scriptname, plugins, true )
+    if newshebang then
+      if newshebang:match( "^#!" ) then
+        shebang = newshebang
+      elseif newshebang:match( "^%s*$" ) then
+        shebang = nil
+      else
+        shebang = "#!"..newshebang
+      end
+    end
     if shebang then
       out:write( shebang, "\n\n" )
     end

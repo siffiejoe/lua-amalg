@@ -265,7 +265,8 @@ amalgamation if the file name of the module or script ends in `.moon`.
 The Lua modules of the [moonscript compiler][12] are used for this
 translation, so it needs to be installed for the amalgamation step.
 Transformation plugins don't have a way to change the shebang lines of
-the amalgamated script, so you'll have to do that by hand if necessary.
+the amalgamated script, so you'll have to do that by hand if necessary
+using the `-S`/`--shebang` option.
 Since this plugin (as other similar transpiler transformation plugins)
 checks the input file extension, it can be used together with normal
 Lua input files and transpilers for other input languages.

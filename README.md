@@ -15,14 +15,13 @@ a single file is a valuable help. This is such a tool.
 Features:
 
 *   Pure Lua (compatible with Lua 5.1 and up), no other external
-    dependencies (except for some plugins).
+    dependencies (plugins may have external dependencies).
 *   Even works for modules using the deprecated `module` function.
 *   You don't have to take care of the order in which the modules are
     `require`'d.
 *   Can embed compiled C modules.
 *   Can collect `require`'d Lua (and C) modules automatically.
 *   Can compress/decompress or precompile using plugin modules.
-    (Plugin modules may have dependencies to external Lua modules!)
 
 What it doesn't do:
 
@@ -32,7 +31,7 @@ What it doesn't do:
     [squish][1], or [soar][2] instead.
 *   It doesn't handle the dependencies of C modules, so it is best
     used on C modules without dependencies (e.g. LuaSocket, LFS,
-    etc.).
+    etc.) or with statically linked C modules.
 
 There are alternatives to this program: See [squish][1], [soar][2],
 [luac.lua][3], [luacc][4], [many2one][5], and [bundle.lua][6] (and
@@ -54,20 +53,25 @@ You can bundle a collection of modules in a single file by calling the
     ./amalg.lua module1 module2
 
 The modules are collected using `package.path`, so they have to be
-available there. The resulting merged Lua code will be written to the
-standard output stream. You have to run the code to make the embedded
-Lua modules available for `require`.
+available there. You can use the usual environment variables (e.g.
+`LUA_PATH`) to adjust the contents of `package.path`. The resulting
+merged Lua code will be written to the standard output stream. You
+have to run the code to make the embedded Lua modules available for
+`require`.
 
 You can specify an output file to use instead of the standard output
 stream.
 
-    ./amalg.lua -o out.lua module1 module2
+    LUA_PATH="../src/?.lua;;" ./amalg.lua -o out.lua module1 module2
 
 You can also embed the main script of your application in the merged
 Lua code as well. Of course the embedded Lua modules can be
-`require`'d in the main script.
+`require`'d in the main script. The main script is specified as a file
+name or path, not a module name (it isn't a module after all). (It
+*could* be a module, but in that case the amalgamation file has to be
+`require`'d before the other embedded modules become available!)
 
-    ./amalg.lua -o out.lua -s main.lua module1 module2
+    lua amalg.lua -o out.lua -s main.lua module1 module2
 
 If you want the original file names and line numbers to appear in
 error messages, you have to activate debug mode. This will require
@@ -100,7 +104,9 @@ the `-x` flag:
 
     ./amalg.lua -o out.lua -s main.lua -c -x
 
-This will make the amalgamated script platform-dependent, obviously!
+This will make the amalgamated script platform and Lua version
+dependent, obviously! And it will not embed any external shared
+libraries that those modules might depend on.
 
 In some cases you may want to ignore automatically listed modules in
 the cache without editing the cache file. Use the `-i` option for that
@@ -133,9 +139,10 @@ table as `_G.arg`).
     ./amalg.lua -o out.lua -a -s main.lua -c
 
 There is also some compression/decompression support handled via
-plugins to `amalg`. To select a transformation by name use the `-z`
-option. The necessary decompression code typically is embedded in the
-result and executed automatically (may depend on the plugin).
+plugins to `amalg`. To select a compression plugin by name use the
+`-z` option. The necessary decompression code typically is embedded in
+the result and executed automatically at runtime (may depend on the
+plugin).
 
     ./amalg.lua -o out.lua -s main.lua -c -z brieflz
 
@@ -152,6 +159,14 @@ complete amalgamation script instead of just individual modules:
 
     ./amalg.lua -s main.lua -c | ./amalg.lua -o out.lua -s- -t luasrcdiet -z brieflz
 
+Transformation plugins can also be used for transpiling some Lua
+dialect to plain Lua code during amalgamation. But plugins cannot
+modify the shebang line of the resulting script, so you should set one
+yourself if your main script contains one unsuitable for plain Lua
+code:
+
+    ./amalg.lua -o out.lua -s main.moon -S "/usr/bin/env lua" -c -t moonscript
+
 If you want to bundle some other read-only files with your amalgamated
 script, you can do so with virtual IO and the `-v` switch:
 
@@ -165,7 +180,8 @@ else normal file IO is used.
 
     ./amalg.lua -h
 
-will list all available options.
+will list all available options (most options are also available as
+long options).
 
 That's it. For further info consult the source (there's a nice
 [annotated HTML file][7] rendered with [Docco][8] on the GitHub
@@ -242,7 +258,7 @@ script.
 The `brieflz` plugin is a compression plugin that compresses its input
 during amalgamation and decompresses it on the fly during runtime. The
 compression step relies on the [brieflz][10] module which must be
-installed during amalgamation. The decompression step is performed by
+available during amalgamation. The decompression step is performed by
 a pure Lua port of the `blz_depack_safe` function from the
 [original C code][11] by Jørgen Ibsen (@jibsen). The decompression
 code is embedded into the resulting amalgamation script, so no extra
@@ -250,7 +266,9 @@ dependency is needed at runtime, but it adds about 2kB (1kB when
 minified with `luasrcdiet`) size overhead. Note that binary data in
 the amalgamation is stored in standard Lua decimal escape notation, so
 it may be larger than usual. However, brieflz compression still
-reduces the size of the resulting amalgamation script in many cases.
+reduces the size of the resulting amalgamation script in many cases,
+and you could precompile the result using the `luac` program (Lua
+bytecode doesn't need decimal escape notation).
 
   [10]: https://luarocks.org/modules/jirutka/brieflz
   [11]: https://github.com/jibsen/brieflz
@@ -267,17 +285,18 @@ translation, so it needs to be installed for the amalgamation step.
 Transformation plugins don't have a way to change the shebang lines of
 the amalgamated script, so you'll have to do that by hand if necessary
 using the `-S`/`--shebang` option.
-Since this plugin (as other similar transpiler transformation plugins)
-checks the input file extension, it can be used together with normal
-Lua input files and transpilers for other input languages.
+This plugin is well-behave in the sense that it checks the file
+extension, so you can mix moonscript code, plain Lua code, and code
+for other well-behaved transpiler plugins in one amalgamation.
 
   [12]: https://luarocks.org/modules/leafo/moonscript
 
 ###                           teal Plugin                          ###
 
 The `teal` plugin works in a similar way as the `moonscript` plugin,
-but is searches for and processes `.tl` files only. The [`tl.lua`][13]
-module is used for the source code transformation.
+but it searches for and processes `.tl` files only. The [`tl.lua`][13]
+module is used for the source code transformation, so it must be
+available during amalgamation.
 
   [13]: https://luarocks.org/modules/hisham/tl
 
@@ -339,4 +358,3 @@ license (the same license as Lua 5.1). The full license text follows:
     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-

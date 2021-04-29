@@ -163,7 +163,7 @@ opened *read-only*. This commandline switch may be used multiple times
 for multiple virtual resources. The file path has to match exactly or
 else normal file IO is used.
 
-   ./amalg.lua -h
+    ./amalg.lua -h
 
 will list all available options.
 

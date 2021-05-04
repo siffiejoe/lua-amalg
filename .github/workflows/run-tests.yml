@@ -37,7 +37,8 @@ jobs:
             tests/script-on-diet.lua
             tests/no-arg-fix.lua
             tests/with-debug-mode.lua
-            tests/modules-from-cache.lua
+            tests/modules-only-from-cache.lua
+            tests/modules-and-script-from-cache.lua
             tests/lua-and-c-modules.lua
             tests/lua-and-moonscript-modules.lua
             tests/lua-and-teal-modules.lua

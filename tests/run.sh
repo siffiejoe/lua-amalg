@@ -99,9 +99,12 @@ echo -n "amalgamate modules and script with debug info ... "
 
 echo -n "collect module names using amalg.lua as a module ... "
 "$LUA" -e 'package.path="../src/?.lua;"..package.path' -l amalg main.lua
+echo -n "amalgamate modules only using amalg.cache ... "
+"$LUA" ../src/amalg.lua -o modules-only-from-cache.lua -s "" -c
+"$LUA" -l modules-only-from-cache -e 'package.path=""' main.lua
 echo -n "amalgamate modules and script using amalg.cache ... "
-"$LUA" ../src/amalg.lua -o modules-from-cache.lua -s main.lua --cache-file=amalg.cache
-"$LUA" -e 'package.path=""' modules-from-cache.lua
+"$LUA" ../src/amalg.lua -o modules-and-script-from-cache.lua --cache-file=amalg.cache
+"$LUA" -e 'package.path=""' modules-and-script-from-cache.lua
 
 echo -n "amalgamate Lua modules, Lua script and C modules ... "
 "$LUA" ../src/amalg.lua -o lua-and-c-modules.lua -s main.lua --use-cache --c-libs
@@ -147,7 +150,8 @@ if [ "$1" != keep ]; then
         script-on-diet.lua \
         no-arg-fix.lua \
         with-debug-mode.lua \
-        modules-from-cache.lua \
+        modules-only-from-cache.lua \
+        modules-and-script-from-cache.lua \
         lua-and-c-modules.lua \
         lua-and-moonscript-modules.lua \
         lua-and-teal-modules.lua \

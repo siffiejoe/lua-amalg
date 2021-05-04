@@ -355,6 +355,9 @@ end
 local function writecache( cache )
   local file = assert( io.open( CACHEFILENAME, "w" ) )
   file:write( "return {\n" )
+  if type( cache[ 1 ] ) == "string" then
+    file:write( "  ", qformat( cache[ 1 ] ), ",\n" )
+  end
   for k, v in pairs( cache ) do
     if type( k ) == "string" and type( v ) == "string" then
       file:write( "  [ ", qformat( k ), " ] = ", qformat( v ), ",\n" )
@@ -498,10 +501,17 @@ local function amalgamate( ... )
     local cache = readcache( options.cachefile )
     for k, v in pairs( cache or {} ) do
       local addmodule = true
-      for _, pattern in ipairs( options.ignorepatterns ) do
-        if k:match( pattern ) then
-          addmodule = false
-          break
+      if type( k ) == "string" then
+        for _, pattern in ipairs( options.ignorepatterns ) do
+          if k:match( pattern ) then
+            addmodule = false
+            break
+          end
+        end
+      else
+        addmodule = false
+        if k == 1 and options.scriptname == nil then
+          options.scriptname = v
         end
       end
       if addmodule then
@@ -522,7 +532,7 @@ local function amalgamate( ... )
   -- line was specified in the first place, that is). However, a
   -- shebang line specifed via command line options takes precedence!
   local scriptbytes, scriptisbinary, shebang
-  if options.scriptname then
+  if options.scriptname and options.scriptname ~= "" then
     scriptbytes, scriptisbinary, shebang = readluafile( options.scriptname,
                                                         options.plugins, true )
     if newshebang then
@@ -887,7 +897,7 @@ end
   -- If a main script is specified on the command line (`-s` flag),
   -- embed it now that all dependency modules are available to
   -- `require`.
-  if options.scriptname then
+  if options.scriptname and options.scriptname ~= "" then
     if scriptisbinary or options.debugmode then
       if options.scriptname == "-" then
         options.scriptname = "<stdin>"
@@ -928,7 +938,13 @@ local function collect()
   -- garbage collected, which should happen at `lua_close()`.
   local sentinel = newproxy and newproxy( true )
                             or setmetatable( {}, { __gc = true } )
-  getmetatable( sentinel ).__gc = function() writecache( cache ) end
+  local type = type
+  getmetatable( sentinel ).__gc = function()
+    if type( arg ) == "table"  then
+      cache[ 1 ] = arg[ 0 ]
+    end
+    writecache( cache )
+  end
   local luasearcher = searchers[ 2+offset ]
   local csearcher = searchers[ 3+offset ]
   local aiosearcher = searchers[ 4+offset ] -- all in one searcher
@@ -961,6 +977,9 @@ local function collect()
   if type( os ) == "table" and type( os.exit ) == "function" then
     local os_exit = os.exit
     function os.exit( ... ) -- luacheck: ignore os
+      if type( arg ) == "table" then
+        cache[ 1 ] = arg[ 0 ]
+      end
       writecache( cache )
       return os_exit( ... )
     end

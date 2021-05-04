@@ -535,13 +535,13 @@ local function amalgamate( ... )
   if options.scriptname and options.scriptname ~= "" then
     scriptbytes, scriptisbinary, shebang = readluafile( options.scriptname,
                                                         options.plugins, true )
-    if newshebang then
-      if newshebang:match( "^#!" ) then
-        shebang = newshebang
-      elseif newshebang:match( "^%s*$" ) then
+    if options.shebang then
+      if options.shebang:match( "^#!" ) then
+        shebang = options.shebang
+      elseif options.shebang:match( "^%s*$" ) then
         shebang = nil
       else
-        shebang = "#!"..newshebang
+        shebang = "#!"..options.shebang
       end
     end
     if shebang then

@@ -938,7 +938,6 @@ local function collect()
   -- garbage collected, which should happen at `lua_close()`.
   local sentinel = newproxy and newproxy( true )
                             or setmetatable( {}, { __gc = true } )
-  local type = type
   getmetatable( sentinel ).__gc = function()
     if type( arg ) == "table"  then
       cache[ 1 ] = arg[ 0 ]

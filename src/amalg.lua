@@ -66,72 +66,38 @@ end
 -- command line (e.g. duplicate options) a warning is printed to the
 -- console.
 local function parsecommandline( ... )
-  local showhelp, modules, argfix, ignorepatterns, plugins, packagefieldname,
-        virtualresources, usecache, embedcmodules, debugmode, scriptname, shebang,
-        outputname, cachename, prefixfile = false, {}, true, {}, {}, "preload", {}
+  local options = {
+    modules = {}, argfix = true, ignorepatterns = {}, plugins = {},
+    packagefieldname = "preload", virtualresources = {}
+  }
   local pluginalreadyadded = {} -- to remove duplicates
 
-  local function setoutputname( v )
-    if v then
-      if outputname then
-        warn( "Resetting output file `"..outputname.."'! Using `"..v.."' now!" )
+  local function makesetter( what, fieldname, optionname )
+    return function( v )
+      if v then
+        if options[ fieldname ] then
+          warn( "Resetting "..what.." '"..options[ fieldname ]..
+                "'! Using '"..v.."' now!" )
+        end
+        options[ fieldname ] = v
+      else
+        warn( "Missing argument for "..optionname.." option!" )
       end
-      outputname = v
-    else
-      warn( "Missing argument for -o/--output option!" )
     end
   end
 
-  local function setcachefilename( v )
-    if v then
-      if cachename then
-        warn( "Resetting cache file `"..cachename.."'! Using `"..v.."' now!" )
-      end
-      cachename = v
-    else
-      warn( "Missing argument for -C/--cache-file option!" )
-    end
-  end
-
-  local function setmainscript( v )
-    if v then
-      if scriptname then
-        warn( "Resetting main script `"..scriptname.."'! Using `"..v.."' now!" )
-      end
-      scriptname = v
-    else
-      warn( "Missing argument for -s/--script option!" )
-    end
-  end
-
-  local function setshebang( v )
-    if v then
-      if shebang then
-        warn( "Resetting shebang line `"..shebang.."'! Using `"..v.."' now!" )
-      end
-      shebang = v
-    else
-      warn( "Missing argument for -S/--shebang option!" )
-    end
-  end
-
-  local function setprefixname( v )
-    if v then
-      if prefixfile then
-        warn( "Resetting prefix file `"..prefixfile.."'! Using `"..v.."' now!" )
-      end
-      prefixfile = v
-    else
-      warn( "Missing argument for -p/--prefix option!" )
-    end
-  end
+  local setoutputname = makesetter( "output file", "outputname", "-o/--output" )
+  local setcachefilename = makesetter( "cache file", "cachefile", "-C/--cache-file" )
+  local setmainscript = makesetter( "main script", "scriptname", "-s/--script" )
+  local setshebang = makesetter( "shebang line", "shebang", "-S/--shebang" )
+  local setprefixfile = makesetter( "prefix file", "prefixfile", "-p/--prefix" )
 
   local function addignorepattern( v )
     if v then
       if not pcall( string.match, "", v ) then
-        warn( "Invalid Lua pattern: `"..v.."'" )
+        warn( "Invalid Lua pattern: '"..v.."'" )
       else
-        ignorepatterns[ #ignorepatterns+1 ] = v
+        options.ignorepatterns[ #options.ignorepatterns+1 ] = v
       end
     else
       warn( "Missing argument for -i/--ignore option!" )
@@ -143,7 +109,7 @@ local function parsecommandline( ... )
       local transform = "amalg."..v..".transform"
       require( transform )
       if not pluginalreadyadded[ v ] then
-        plugins[ #plugins+1 ] = { transform }
+        options.plugins[ #options.plugins+1 ] = { transform }
         pluginalreadyadded[ v ] = true
       end
     else
@@ -158,7 +124,7 @@ local function parsecommandline( ... )
       require( deflate )
       require( inflate )
       if not pluginalreadyadded[ v ] then
-        plugins[ #plugins+1 ] = { deflate, inflate }
+        options.plugins[ #options.plugins+1 ] = { deflate, inflate }
         pluginalreadyadded[ v ] = true
       end
     else
@@ -168,7 +134,7 @@ local function parsecommandline( ... )
 
   local function addvirtualioresource( v )
     if v then
-      virtualresources[ #virtualresources+1 ] = v
+      options.virtualresources[ #options.virtualresources+1 ] = v
     else
       warn( "Missing argument for -v/--virtual-io option!" )
     end
@@ -179,18 +145,18 @@ local function parsecommandline( ... )
     local a = select( i, ... )
     if a == "--" then
       for j = i+1, n do
-        modules[ select( j, ... ) ] = true
+        options.modules[ select( j, ... ) ] = true
       end
       break
     elseif a == "-h" or a == "--help" then
       i = i + 1
-      showhelp = true
+      options.showhelp = true
     elseif a == "-o" or a == "--output" then
       i = i + 1
       setoutputname( i <= n and select( i, ... ) )
     elseif a == "-p" or a == "--prefix" then
       i = i + 1
-      setprefixname( i <= n and select( i, ... ) )
+      setprefixfile( i <= n and select( i, ... ) )
     elseif a == "-s" or a == "--script" then
       i = i + 1
       setmainscript( i <= n and select( i, ... ) )
@@ -210,25 +176,25 @@ local function parsecommandline( ... )
       i = i + 1
       addvirtualioresource( i <= n and select( i, ... ) )
     elseif a == "-f" or a == "--fallback" then
-      packagefieldname = "postload"
+      options.packagefieldname = "postload"
     elseif a == "-c" or a == "--use-cache" then
-      usecache = true
+      options.usecache = true
     elseif a == "-C" or a == "--cache-file" then
-      usecache = true
+      options.usecache = true
       i = i + 1
       setcachefilename( i <= n and select( i, ... ) )
     elseif a == "-x" or a == "--c-libs" then
-      embedcmodules = true
+      options.embedcmodules = true
     elseif a == "-d" or a == "--debug" then
-      debugmode = true
+      options.debugmode = true
     elseif a == "-a" or a == "--no-argfix" then
-      argfix = false
+      options.argfix = false
     else
       local prefix = a:sub( 1, 2 )
       if prefix == "-o" then
         setoutputname( a:sub( 3 ) )
       elseif prefix == "-p" then
-        setprefixname( a:sub( 3 ) )
+        setprefixfile( a:sub( 3 ) )
       elseif prefix == "-s" then
         setmainscript( a:sub( 3 ) )
       elseif prefix == "-S" then
@@ -242,14 +208,14 @@ local function parsecommandline( ... )
       elseif prefix == "-v" then
         addvirtualioresource( a:sub( 3 ) )
       elseif prefix == "-C" then
-        usecache = true
+        options.usecache = true
         setcachefilename( a:sub( 3 ) )
       elseif a:sub( 1, 1 ) == "-" then
         local option, value = a:match( "^(%-%-[%w%-]+)=(.*)$" )
         if option == "--output" then
           setoutputname( value )
         elseif option == "--prefix" then
-          setprefixname( value )
+          setprefixfile( value )
         elseif option == "--script" then
           setmainscript( value )
         elseif option == "--shebang" then
@@ -263,20 +229,18 @@ local function parsecommandline( ... )
         elseif option == "--virtual-io" then
           addvirtualioresource( value )
         elseif option == "--cache-file" then
-          usecache = true
+          options.usecache = true
           setcachefilename( value )
         else
           warn( "Unknown/invalid command line flag: "..a )
         end
       else
-        modules[ a ] = true
+        options.modules[ a ] = true
       end
     end
     i = i + 1
   end
-  return showhelp, outputname, scriptname, debugmode, argfix, usecache,
-         packagefieldname, ignorepatterns, plugins, embedcmodules, modules,
-         cachename, prefixfile, virtualresources, shebang
+  return options
 end
 
 
@@ -496,13 +460,10 @@ end
 -- collects the module and script sources, and writes the amalgamated
 -- source.
 local function amalgamate( ... )
-  local showhelp, outputname, scriptname, debugmode, argfix, usecache,
-        packagefieldname, ignorepatterns, plugins, embedcmodules,
-        modules, cachename, prefixname, virtualresources, newshebang
-        = parsecommandline( ... )
+  local options = parsecommandline( ... )
   local errors = {}
 
-  if showhelp then
+  if options.showhelp then
     print( ([[%s <options> [--] <modules...>
 
   available options:
@@ -533,35 +494,37 @@ local function amalgamate( ... )
   -- When instructed to on the command line, the cache file is loaded,
   -- and the modules are added to the ones listed on the command line
   -- unless they are ignored via the `-i` command line option.
-  if usecache then
-    local cache = readcache( cachename )
+  if options.usecache then
+    local cache = readcache( options.cachefile )
     for k, v in pairs( cache or {} ) do
       local addmodule = true
-      for _, pattern in ipairs( ignorepatterns ) do
+      for _, pattern in ipairs( options.ignorepatterns ) do
         if k:match( pattern ) then
           addmodule = false
           break
         end
       end
       if addmodule then
-        modules[ k ] = v
+        options.modules[ k ] = v
       end
     end
   end
 
   local out = io.stdout
-  if outputname and outputname ~= "-" then
-    out = assert( io.open( outputname, "w" ) )
+  if options.outputname and options.outputname ~= "-" then
+    out = assert( io.open( options.outputname, "w" ) )
   end
 
   -- If a main script is to be embedded, this includes the same
   -- shebang line that was used in the main script, so that the
   -- resulting amalgamation can be run without explicitly
   -- specifying the interpreter on unixoid systems (if a shebang
-  -- line was specified in the first place, that is).
+  -- line was specified in the first place, that is). However, a
+  -- shebang line specifed via command line options takes precedence!
   local scriptbytes, scriptisbinary, shebang
-  if scriptname then
-    scriptbytes, scriptisbinary, shebang = readluafile( scriptname, plugins, true )
+  if options.scriptname then
+    scriptbytes, scriptisbinary, shebang = readluafile( options.scriptname,
+                                                        options.plugins, true )
     if newshebang then
       if newshebang:match( "^#!" ) then
         shebang = newshebang
@@ -586,16 +549,15 @@ local function amalgamate( ... )
   -- of the `package` module that are necessary depend on the command
   -- line switches given, but you will need at least `package.preload`
   -- and a `require` function that uses it.
-  if prefixname then
-    local prefix = readfile( prefixname )
-    out:write( prefix, "\n" )
+  if options.prefixfile then
+    out:write( readfile( options.prefixfile ), "\n" )
   end
 
   -- If fallback loading is requested, the module loaders of the
   -- amalgamated modules are registered in table `package.postload`,
   -- and an extra searcher function is added at the end of
   -- `package.searchers`.
-  if packagefieldname == "postload" then
+  if options.packagefieldname == "postload" then
     out:write( [=[
 do
 local assert = assert
@@ -621,7 +583,7 @@ end
   -- into the output. Later plugins can be compressed by plugins that
   -- have already been processed.
   local activeplugins = {}
-  for _, pluginspec in ipairs( plugins ) do
+  for _, pluginspec in ipairs( options.plugins ) do
     if pluginspec[ 2 ] then
       local path, message  = searchpath( pluginspec[ 2 ], package.path )
       if not path then
@@ -635,7 +597,7 @@ end
   -- Sorts modules alphabetically. Modules will be embedded in
   -- alphabetical order. This ensures deterministic output.
   local modulenames = {}
-  for modulename in pairs( modules ) do
+  for modulename in pairs( options.modules ) do
     modulenames[ #modulenames+1 ] = modulename
   end
   table.sort( modulenames )
@@ -643,12 +605,12 @@ end
   -- Every module given on the command line and/or in the cache file
   -- is processed.
   for _, modulename in ipairs( modulenames ) do
-    local moduletype = modules[ modulename ]
+    local moduletype = options.modules[ modulename ]
     -- Only Lua modules are handled for now, so modules that are
     -- definitely C modules are skipped and handled later.
     if moduletype ~= "C" then
       local path, message  = searchpath( modulename, package.path )
-      if not path and (moduletype == "L" or not embedcmodules) then
+      if not path and (moduletype == "L" or not options.embedcmodules) then
         -- The module is supposed to be a Lua module, but it cannot
         -- be found, so an error is raised.
         error( "module `"..modulename.."' not found:"..NOTFOUNDPREFIX..message )
@@ -656,10 +618,11 @@ end
         -- Module possibly is a C module, so it is tried again later.
         -- But the current error message is saved in case the given
         -- name isn't a C module either.
-        modules[ modulename ], errors[ modulename ] = "C", NOTFOUNDPREFIX..message
+        options.modules[ modulename ], errors[ modulename ] = "C", NOTFOUNDPREFIX..message
       else
-        writeluamodule( out, modulename, path, plugins,
-                        packagefieldname, debugmode, argfix )
+        writeluamodule( out, modulename, path, options.plugins,
+                        options.packagefieldname, options.debugmode,
+                        options.argfix )
       end
     end
   end
@@ -667,7 +630,7 @@ end
   -- If the `-x` command line flag is active, C modules are embedded
   -- as strings, and written out to temporary files on demand by the
   -- amalgamated code.
-  if embedcmodules then
+  if options.embedcmodules then
     local dllembedded = {}
     -- The amalgamation of C modules is split into two parts:
     -- One part generates a temporary file name for the C library
@@ -724,7 +687,7 @@ local function temporarydll( code )
 end
 ]=]
     for _, modulename in ipairs( modulenames ) do
-      local moduletype = modules[ modulename ]
+      local moduletype = options.modules[ modulename ]
       if moduletype == "C" then
         -- Try a search strategy similar to the standard C module
         -- searcher first and then the all-in-one strategy to locate
@@ -734,7 +697,8 @@ end
           errors[ modulename ] = (errors[ modulename ] or "")..NOTFOUNDPREFIX..message
           path, message = searchpath( modulename:gsub( "%..*$", "" ), package.cpath )
           if not path then
-            error( "module `"..modulename.."' not found:"..errors[ modulename ]..NOTFOUNDPREFIX..message )
+            error( "module `"..modulename.."' not found:"..
+                   errors[ modulename ]..NOTFOUNDPREFIX..message )
           end
         end
         local qpath = qformat( path )
@@ -745,14 +709,14 @@ end
         local openf = modulename:gsub( "%.", "_" )
         local openf1, openf2 = openf:match( "^([^%-]*)%-(.*)$" )
         if not dllembedded[ path ] then
-          local code = readbinfile( path, plugins )
+          local code = readbinfile( path, options.plugins )
           dllembedded[ path ] = true
           local qcode = qformat( code )
           -- The `temporarydll` function saves the embedded binary
           -- code into a temporary file for later loading.
           out:write( prefix, "\ndlls[ ", qpath, " ] = temporarydll(",
-                             openinflatecalls( plugins ), " ", qcode,
-                             closeinflatecalls( plugins ), " )\n" )
+                             openinflatecalls( options.plugins ), " ", qcode,
+                             closeinflatecalls( options.plugins ), " )\n" )
           prefix = ""
         end -- shared libary not embedded already
         -- Adds a function to `package.preload` to load the temporary
@@ -761,15 +725,15 @@ end
         -- from the module name at the end first, and then at the
         -- beginning if that failed.
         local qm = qformat( modulename )
-        out:write( "\npackage.", packagefieldname, "[ ", qm, " ] = function()\n",
-                   "  local dll = dlls[ ", qpath, " ][ 1 ]\n" )
+        out:write( "\npackage.", options.packagefieldname, "[ ", qm,
+                   " ] = function()\n  local dll = dlls[ ", qpath,
+                   " ][ 1 ]\n" )
         if openf1 then
           out:write( "  local loader = package_loadlib( dll, ",
                      qformat( "luaopen_"..openf1 ), " )\n",
                      "  if not loader then\n",
                      "    loader = assert( package_loadlib( dll, ",
-                     qformat( "luaopen_"..openf2 ),
-                     " ) )\n  end\n" )
+                     qformat( "luaopen_"..openf2 ), " ) )\n  end\n" )
         else
           out:write( "  local loader = assert( package_loadlib( dll, ",
                      qformat( "luaopen_"..openf ), " ) )\n" )
@@ -797,7 +761,7 @@ end
   -- format for `read` or `lines`.
   -- In addition to file IO functions and methods, `loadfile` and
   -- `dofile` are patched as well.
-  if #virtualresources > 0 then
+  if #options.virtualresources > 0 then
     out:write( [=[
 do
 local vfile = {}
@@ -911,32 +875,35 @@ function vfile:seek( whence, offset )
   return self.offset
 end
 ]=] )
-    for _, v in ipairs( virtualresources ) do
-      local qdata = qformat( readbinfile( v, plugins ) )
+    for _, v in ipairs( options.virtualresources ) do
+      local qdata = qformat( readbinfile( v, options.plugins ) )
       out:write( "\nvirtual[ ", qformat( v ), " ] =",
-                 openinflatecalls( plugins ), " ", qdata,
-                 closeinflatecalls( plugins ), "\n" )
+                 openinflatecalls( options.plugins ), " ", qdata,
+                 closeinflatecalls( options.plugins ), "\n" )
     end
     out:write( "end\n\n" )
-  end -- if #virtualresources > 0
+  end -- if #options.virtualresources > 0
 
   -- If a main script is specified on the command line (`-s` flag),
   -- embed it now that all dependency modules are available to
   -- `require`.
-  if scriptname then
-    if scriptisbinary or debugmode then
-      if scriptname == "-" then scriptname = "<stdin>" end
+  if options.scriptname then
+    if scriptisbinary or options.debugmode then
+      if options.scriptname == "-" then
+        options.scriptname = "<stdin>"
+      end
       out:write( "assert( (loadstring or load)(",
-                 openinflatecalls( plugins ), " ",
+                 openinflatecalls( options.plugins ), " ",
                  qformat( scriptbytes ),
-                 closeinflatecalls( plugins ),
-                 ", '@'..", qformat( scriptname ), " ) )( ... )\n\n" )
+                 closeinflatecalls( options.plugins ),
+                 ", '@'..", qformat( options.scriptname ),
+                 " ) )( ... )\n\n" )
     else
       out:write( scriptbytes )
     end
   end
 
-  if outputname and outputname ~= "-" then
+  if options.outputname and options.outputname ~= "-" then
     out:close()
   end
 end
@@ -1027,3 +994,4 @@ if isscript() then
 else
   collect()
 end
+

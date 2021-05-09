@@ -294,11 +294,20 @@ for other well-behaved transpiler plugins in one amalgamation.
 ###                           teal Plugin                          ###
 
 The `teal` plugin works in a similar way as the `moonscript` plugin,
-but it searches for and processes `.tl` files only. The [`tl.lua`][13]
-module is used for the source code transformation, so it must be
-available during amalgamation.
+but it searches for and processes `.tl` files. The [`tl`][13] module
+is used for the source code transformation, so it must be available
+during amalgamation.
 
   [13]: https://luarocks.org/modules/hisham/tl
+
+###                          fennel Plugin                         ###
+
+The `fennel` plugin works in a similar way as the `moonscript` and
+`tl` plugin, but it searches for and processes `.fnl` files. The
+[`fennel`][13] module is used for the source code transformation, so
+it must be available during amalgamation.
+
+  [14]: https://luarocks.org/modules/technomancy/fennel
 
 
 ##                          Troubleshooting                         ##
@@ -323,7 +332,7 @@ to embed one very early in the amalgamation. Obviously this may cause
 problems if multiple scripts use this technique, so a common, shared
 approach is preferred.
 
-  [14]: https://stackoverflow.com/questions/36871859/lua-emulating-the-require-function/36892318#36892318
+  [15]: https://stackoverflow.com/questions/36871859/lua-emulating-the-require-function/36892318#36892318
 
 
 ##                              Contact                             ##

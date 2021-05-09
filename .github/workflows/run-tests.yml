@@ -42,6 +42,7 @@ jobs:
             tests/lua-and-c-modules.lua
             tests/lua-and-moonscript-modules.lua
             tests/lua-and-teal-modules.lua
+            tests/lua-and-fennel-modules.lua
             tests/lua-and-c-modules-zipped.lua
             tests/lua-and-c-modules-amalgamated-then-zipped.lua
             tests/with-ignored-modules.lua

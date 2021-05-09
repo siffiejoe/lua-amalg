@@ -118,6 +118,10 @@ echo -n "amalgamate Lua and Teal modules ... "
 "$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o lua-and-teal-modules.lua -s main.tl -c -t teal && \
 "$LUA" -e 'package.path=""' lua-and-teal-modules.lua
 
+echo -n "amalgamate Lua and Fennel modules ... "
+"$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o lua-and-fennel-modules.lua -s main.fnl -c -t fennel && \
+"$LUA" -e 'package.path=""' lua-and-fennel-modules.lua
+
 echo -n "amalgamate Lua modules, Lua script and C modules compressed ... "
 "$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o lua-and-c-modules-zipped.lua -s main.lua -c -x -t luasrcdiet -z brieflz && \
 "$LUA" -e 'package.path,package.cpath="",""' lua-and-c-modules-zipped.lua
@@ -155,6 +159,7 @@ if [ "$1" != keep ]; then
         lua-and-c-modules.lua \
         lua-and-moonscript-modules.lua \
         lua-and-teal-modules.lua \
+        lua-and-fennel-modules.lua \
         lua-and-c-modules-zipped.lua \
         lua-and-c-modules-amalgamated-then-zipped.lua \
         with-ignored-modules.lua \

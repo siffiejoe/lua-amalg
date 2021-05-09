@@ -23,6 +23,7 @@ build = {
     ["amalg.luasrcdiet.transform"] = "src/amalg/luasrcdiet/transform.lua",
     ["amalg.moonscript.transform"] = "src/amalg/moonscript/transform.lua",
     ["amalg.teal.transform"] = "src/amalg/teal/transform.lua",
+    ["amalg.fennel.transform"] = "src/amalg/fennel/transform.lua",
     ["amalg.brieflz.inflate"] = "src/amalg/brieflz/inflate.lua",
     ["amalg.brieflz.deflate"] = "src/amalg/brieflz/deflate.lua",
   },

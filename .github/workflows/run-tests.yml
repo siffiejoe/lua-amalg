@@ -21,6 +21,7 @@ jobs:
       - run: luarocks install luasrcdiet
       - run: luarocks install moonscript
       - run: luarocks install tl
+      - run: luarocks install fennel
       - run: luarocks install brieflz
       - run: '( cd tests && ./run.sh github keep )'
       - uses: actions/upload-artifact@v2

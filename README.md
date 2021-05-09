@@ -304,7 +304,7 @@ during amalgamation.
 
 The `fennel` plugin works in a similar way as the `moonscript` and
 `tl` plugin, but it searches for and processes `.fnl` files. The
-[`fennel`][13] module is used for the source code transformation, so
+[`fennel`][14] module is used for the source code transformation, so
 it must be available during amalgamation.
 
   [14]: https://luarocks.org/modules/technomancy/fennel
@@ -324,7 +324,7 @@ its own `package.path` at runtime or changes its working directory.
 > My environment does not support `require` or the `package` module!
 
 That's unfortunate. This tool relies on a working `require` function
-and a minimal `package` module. See [this stackoverflow post][14] for
+and a minimal `package` module. See [this stackoverflow post][15] for
 how you can provide minimal stubs for the World of Warcraft
 environment. If you can't provide a shared `require` (and `package`)
 implementation in your environment, you can use the `-p <file>` switch

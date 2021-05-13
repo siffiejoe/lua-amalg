@@ -285,7 +285,7 @@ translation, so it needs to be installed for the amalgamation step.
 Transformation plugins don't have a way to change the shebang lines of
 the amalgamated script, so you'll have to do that by hand if necessary
 using the `-S`/`--shebang` option.
-This plugin is well-behave in the sense that it checks the file
+This plugin is well-behaved in the sense that it checks the file
 extension, so you can mix moonscript code, plain Lua code, and code
 for other well-behaved transpiler plugins in one amalgamation.
 

@@ -178,6 +178,10 @@ opened *read-only*. This commandline switch may be used multiple times
 for multiple virtual resources. The file path has to match exactly or
 else normal file IO is used.
 
+    ./amalg.lua -o out.lua -s main.lua --init-file initial_content.lua
+
+The `--init-file` option can be append the content of file on first line on bundle.
+
     ./amalg.lua -h
 
 will list all available options (most options are also available as

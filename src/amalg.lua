@@ -61,6 +61,7 @@ end
 -- *   `-x`, `--c-libs`: also embed compiled C modules
 -- *   `-z <plugin>`, `--zip=<plugin>`: use (de-)compression plugin
 --     (can be given multiple times)
+--     `--init-file <file>`: append the content of file on initial bundle
 --
 -- Other arguments are assumed to be module names. For an inconsistent
 -- command line (e.g. duplicate options) a warning is printed to the
@@ -183,6 +184,9 @@ local function parsecommandline( ... )
       options.usecache = true
       i = i + 1
       setcachefilename( i <= n and select( i, ... ) )
+    elseif a == "--init-file" then
+        i = i + 1
+        options.initFile = select(i, ...)
     elseif a == "-x" or a == "--c-libs" then
       options.embedcmodules = true
     elseif a == "-d" or a == "--debug" then
@@ -490,6 +494,7 @@ local function amalgamate( ... )
     -x, --c-libs: also embed C modules
     -z <plugin>, --zip=<plugin>: use (de-)compression plugin
       (can be specified multiple times)
+    --init-file <file>: append the content of file on initial bundle
 ]]):format( PROGRAMNAME, CACHEFILENAME ) )
     return
   end
@@ -523,6 +528,12 @@ local function amalgamate( ... )
   local out = io.stdout
   if options.outputname and options.outputname ~= "-" then
     out = assert( io.open( options.outputname, "w" ) )
+  end
+
+  -- Append on first line of bundle script all content of file specified
+  if options.initFile then
+    local file = io.open(options.initFile, 'r')
+    out:write(file:read('*a'), "\n\n")
   end
 
   -- If a main script is to be embedded, this includes the same

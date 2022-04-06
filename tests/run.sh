@@ -81,8 +81,12 @@ echo -n "amalgamate and transform modules and script(1) ... "
 "$LUA" -e 'package.path=""' compiled-and-zipped.lua
 
 echo -n "amalgamate and transform modules and script(2) ... "
-"$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o script-on-diet.lua -s main.lua -t luasrcdiet module1 module2 && \
-"$LUA" -e 'package.path=""' script-on-diet.lua
+"$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o script-on-diet1.lua -s main.lua -t luasrcdiet module1 module2 && \
+"$LUA" -e 'package.path=""' script-on-diet1.lua
+
+echo -n "amalgamate and transform modules and script(3) ... "
+"$LUA" -e 'package.path="../src/?.lua;"..package.path' ../src/amalg.lua -o script-on-diet2.lua -s main.lua -t dumbluaparser module1 module2 && \
+"$LUA" -e 'package.path=""' script-on-diet2.lua
 
 echo -n "amalgamate and transform in two steps ... "
 "$LUA" ../src/amalg.lua -o- -s main.lua module1 module2 | \
@@ -151,7 +155,8 @@ if [ "$1" != keep ]; then
         binary-modules-and-script.lua \
         compiled-and-zipped.lua \
         amalgamated-then-zipped.lua \
-        script-on-diet.lua \
+        script-on-diet1.lua \
+        script-on-diet2.lua \
         no-arg-fix.lua \
         with-debug-mode.lua \
         modules-only-from-cache.lua \

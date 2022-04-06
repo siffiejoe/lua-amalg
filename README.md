@@ -253,6 +253,15 @@ script.
 
   [9]: https://luarocks.org/modules/jirutka/luasrcdiet
 
+###                      dumbluaparser Plugin                      ###
+
+The `dumbluaparser` transformation plugin is a more recent alternative
+to the `luasrcdiet` plugin, and also minifies Lua source code. It may
+work better with Lua 5.4-specific source code. As the name implies,
+the [DumbLuaParser][16] module has to be available during amalgamation.
+
+  [16]: https://luarocks.org/modules/refreezed/dumbluaparser
+
 ###                         brieflz Plugin                         ###
 
 The `brieflz` plugin is a compression plugin that compresses its input

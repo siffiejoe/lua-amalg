@@ -12,19 +12,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: leafo/gh-actions-lua@v8
+      - uses: leafo/gh-actions-lua@v9
         with:
           luaVersion: ${{ matrix.luaVersion }}
       - uses: leafo/gh-actions-luarocks@v4
         with:
-          luarocksVersion: "3.7.0"
+          luarocksVersion: "3.8.0"
       - run: luarocks install luasrcdiet
+      - run: luarocks install dumbluaparser
       - run: luarocks install moonscript
       - run: luarocks install tl
       - run: luarocks install fennel
       - run: luarocks install brieflz
       - run: '( cd tests && ./run.sh github keep )'
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: amalgamations-${{ matrix.luaVersion }}
           path: |
@@ -35,7 +36,8 @@ jobs:
             tests/binary-modules-and-script.lua
             tests/compiled-and-zipped.lua
             tests/amalgamated-then-zipped.lua
-            tests/script-on-diet.lua
+            tests/script-on-diet1.lua
+            tests/script-on-diet2.lua
             tests/no-arg-fix.lua
             tests/with-debug-mode.lua
             tests/modules-only-from-cache.lua

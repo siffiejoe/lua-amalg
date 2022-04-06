@@ -48,7 +48,7 @@ probably some more).
 ##                          Getting Started                         ##
 
 You can bundle a collection of modules in a single file by calling the
-`amalg.lua` script and passing the module names on the commandline.
+`amalg.lua` script and passing the module names on the command-line.
 
     ./amalg.lua module1 module2
 
@@ -66,14 +66,14 @@ stream.
 
 You can also embed the main script of your application in the merged
 Lua code as well. Of course the embedded Lua modules can be
-`require`'d in the main script. The main script is specified as a file
-name or path, not a module name (it isn't a module after all). (It
+`require`'d in the main script. The main script is specified as a
+filename or path, not a module name (it isn't a module after all). (It
 *could* be a module, but in that case the amalgamation file has to be
 `require`'d before the other embedded modules become available!)
 
     lua amalg.lua -o out.lua -s main.lua module1 module2
 
-If you want the original file names and line numbers to appear in
+If you want the original filenames and line numbers to appear in
 error messages, you have to activate debug mode. This will require
 slightly more memory, however.
 
@@ -90,7 +90,7 @@ Multiple runs will add to this module cache. But don't access it from
 multiple concurrent processes!
 
 You can use the cache (in addition to all module names given on the
-commandline) using the `-c` flag.
+command-line) using the `-c` flag.
 
     ./amalg.lua -o out.lua -s main.lua -c
 
@@ -99,7 +99,7 @@ To use a custom file as cache specify `-C <file>`:
     ./amalg.lua -o out.lua -s main.lua -C myamalg.cache
 
 However, this will only embed the Lua modules. To also embed C modules
-(both from the cache and from the command line), you have to specify
+(both from the cache and from the command-line), you have to specify
 the `-x` flag:
 
     ./amalg.lua -o out.lua -s main.lua -c -x
@@ -174,7 +174,7 @@ script, you can do so with virtual IO and the `-v` switch:
 
 This will embed `template.txt` in the amalgamated script and
 monkey-patch the file IO functions if (and only if) the resource is
-opened *read-only*. This commandline switch may be used multiple times
+opened *read-only*. This command-line switch may be used multiple times
 for multiple virtual resources. The file path has to match exactly or
 else normal file IO is used.
 
@@ -204,7 +204,7 @@ Lua binary code). They are used only on pure Lua files (modules or
 main script). Compression plugins on the other hand are used on both
 Lua files and compiled C modules.
 
-A transformation plugin (used with the command line option `-t
+A transformation plugin (used with the command-line option `-t
 <name>`) is implemented as a Lua module `amalg.<name>.transform`. The
 module exports a function that takes a string (the input source), a
 boolean (whether the input source is in Lua source code format), and
@@ -214,7 +214,7 @@ source code. It is good practice to handle the case where the input is
 not in Lua source code format (but Lua binary code) by skipping the
 transformation in this case.
 
-A compression plugin (used with the command line option `-z <name>`)
+A compression plugin (used with the command-line option `-z <name>`)
 is implemented as two separate Lua modules `amalg.<name>.deflate` and
 `amalg.<name>.inflate`. The deflate part of the plugin works exactly
 like a transformation plugin module. It is called during amalgamation
@@ -288,7 +288,7 @@ The `moonscript` plugin extends `package.path` when it is first loaded
 to search for `.moon` files in the same directories as for `.lua`
 files. `.moon` files take precedence. Then the plugin translates all
 non-binary modules and scripts from moonscript code to Lua code during
-amalgamation if the file name of the module or script ends in `.moon`.
+amalgamation if the filename of the module or script ends in `.moon`.
 The Lua modules of the [moonscript compiler][12] are used for this
 translation, so it needs to be installed for the amalgamation step.
 Transformation plugins don't have a way to change the shebang lines of
@@ -333,7 +333,7 @@ its own `package.path` at runtime or changes its working directory.
 > My environment does not support `require` or the `package` module!
 
 That's unfortunate. This tool relies on a working `require` function
-and a minimal `package` module. See [this stackoverflow post][15] for
+and a minimal `package` module. See [this Stack Overflow post][15] for
 how you can provide minimal stubs for the World of Warcraft
 environment. If you can't provide a shared `require` (and `package`)
 implementation in your environment, you can use the `-p <file>` switch

@@ -11,13 +11,13 @@ jobs:
         luaVersion: ["5.1", "5.2", "5.3", "5.4"]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: leafo/gh-actions-lua@v9
         with:
           luaVersion: ${{ matrix.luaVersion }}
       - uses: leafo/gh-actions-luarocks@v4
         with:
-          luarocksVersion: "3.8.0"
+          luarocksVersion: "3.9.0"
       - run: luarocks install luasrcdiet
       - run: luarocks install dumbluaparser
       - run: luarocks install moonscript

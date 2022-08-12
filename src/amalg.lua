@@ -976,8 +976,8 @@ local function collect()
   if type( os ) == "table" and type( os.exit ) == "function" then
     local os_exit = os.exit
     function os.exit( ... ) -- luacheck: ignore os
-      if type( arg ) == "table" then
-        cache[ 1 ] = arg[ 0 ]
+      if type( _G ) == "table" and  type( _G.arg ) == "table" then
+        cache[ 1 ] = _G.arg[ 0 ]
       end
       writecache( cache )
       return os_exit( ... )

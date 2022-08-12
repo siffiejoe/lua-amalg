@@ -763,7 +763,7 @@ end
   -- (and only if) the file is opened in read-only mode.
   -- To reduce the size of the embedded code, error handling is mostly
   -- left out (since the resources are static, you can make sure that
-  -- no errors occurr). Also, emulating the IO library for four
+  -- no errors occur). Also, emulating the IO library for four
   -- different Lua versions on many different architectures and OSes
   -- is very challenging. Therefore, there might be corner cases
   -- where the virtual IO functions behave slightly differently than

@@ -109,7 +109,8 @@ dependent, obviously! And it will not embed any external shared
 libraries that those modules might depend on. If your compiled C
 modules do have external dependencies, your best bet is to bundle the
 DLLs with the amalgamated Lua script (on Windows) or install the
-required dependencies using the OSes package manager (e.g. on Linux).
+required dependencies on the target machine using the OSes package
+manager (e.g. on Linux).
 
 In some cases you may want to ignore automatically listed modules in
 the cache without editing the cache file. Use the `-i` option for that

@@ -101,11 +101,13 @@ echo -n "amalgamate modules and script with debug info ... "
 "$LUA" ../src/amalg.lua -o with-debug-mode.lua --debug -s main.lua module1 module2
 "$LUA" -e 'package.path=""' with-debug-mode.lua
 
-echo -n "collect module names using amalg.lua as a module ... "
+echo -n "collect module names using amalg.lua as a module(1) ... "
 "$LUA" -e 'package.path="../src/?.lua;"..package.path' -l amalg main.lua
 echo -n "amalgamate modules only using amalg.cache ... "
 "$LUA" ../src/amalg.lua -o modules-only-from-cache.lua -s "" -c
 "$LUA" -l modules-only-from-cache -e 'package.path=""' main.lua
+echo -n "collect module names using amalg.lua as a module(2) ... "
+"$LUA" -e 'package.path="../src/?.lua;"..package.path' -l amalg main.lua exit
 echo -n "amalgamate modules and script using amalg.cache ... "
 "$LUA" ../src/amalg.lua -o modules-and-script-from-cache.lua --cache-file=amalg.cache
 "$LUA" -e 'package.path=""' modules-and-script-from-cache.lua

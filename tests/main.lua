@@ -15,3 +15,7 @@ assert( module5.func() == "aiomodule2" )
 
 print( "ok" )
 
+if arg[ 1 ] == "exit" then
+  os.exit()
+end
+

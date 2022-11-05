@@ -974,7 +974,7 @@ local function collect()
   -- `os.exit` function is monkey-patched to also save the updated
   -- cache to the cache file on disk.
   if type( os ) == "table" and type( os.exit ) == "function" then
-    local os_exit = os.exit
+    local type, os_exit = type, os.exit
     function os.exit( ... ) -- luacheck: ignore os
       if type( _G ) == "table" and  type( _G.arg ) == "table" then
         cache[ 1 ] = _G.arg[ 0 ]

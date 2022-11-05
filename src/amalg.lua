@@ -210,7 +210,7 @@ local function parsecommandline( ... )
       elseif prefix == "-C" then
         options.usecache = true
         setcachefilename( a:sub( 3 ) )
-      elseif a:sub( 1, 1 ) == "-" then
+      elseif a:sub( 2, 2 ) == "-" then
         local option, value = a:match( "^(%-%-[%w%-]+)=(.*)$" )
         if option == "--output" then
           setoutputname( value )

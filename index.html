@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>amalg.lua</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>amalg.lua</h1>
+              </div>
+          </li>
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-2">&#x00a7;</a>
+              </div>
+              <p><strong>Amalg</strong> is a Lua tool for bundling a Lua script and dependent
+Lua modules in a single <code>.lua</code> file for easier distribution.</p>
+<h2 id="implementation">Implementation</h2>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-3">&#x00a7;</a>
+              </div>
+              <p>The name of the script used in warning messages and the name of the
+cache file can be configured here by changing these local
+variables:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> PROGRAMNAME = <span class="hljs-string">&quot;amalg.lua&quot;</span>
+<span class="hljs-keyword">local</span> CACHEFILENAME = <span class="hljs-string">&quot;amalg.cache&quot;</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-4">&#x00a7;</a>
+              </div>
+              <p>Lua 5.4 changed the format of the package.searchpath error message</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> LUAVERSION = <span class="hljs-built_in">tonumber</span>( <span class="hljs-built_in">_VERSION</span>:<span class="hljs-built_in">match</span>( <span class="hljs-string">&quot;(%d+%.%d+)&quot;</span> ) )
+<span class="hljs-keyword">local</span> NOTFOUNDPREFIX = LUAVERSION &lt; <span class="hljs-number">5.4</span> <span class="hljs-keyword">and</span> <span class="hljs-string">&quot;&quot;</span> <span class="hljs-keyword">or</span> <span class="hljs-string">&quot;\n\t&quot;</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-5">&#x00a7;</a>
+              </div>
+              <p>Wrong use of the command line may cause warnings to be printed to
+the console. This function is for printing those warnings:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">warn</span><span class="hljs-params">( ... )</span></span>
+  <span class="hljs-built_in">io</span>.<span class="hljs-built_in">stderr</span>:<span class="hljs-built_in">write</span>( <span class="hljs-string">&quot;WARNING &quot;</span>, PROGRAMNAME, <span class="hljs-string">&quot;: &quot;</span> )
+  <span class="hljs-keyword">local</span> n = <span class="hljs-built_in">select</span>( <span class="hljs-string">&#x27;#&#x27;</span>, ... )
+  <span class="hljs-keyword">for</span> i = <span class="hljs-number">1</span>, n <span class="hljs-keyword">do</span>
+    <span class="hljs-keyword">local</span> v = <span class="hljs-built_in">tostring</span>( (<span class="hljs-built_in">select</span>( i, ... )) )
+    <span class="hljs-built_in">io</span>.<span class="hljs-built_in">stderr</span>:<span class="hljs-built_in">write</span>( v, i == n <span class="hljs-keyword">and</span> <span class="hljs-string">&#x27;\n&#x27;</span> <span class="hljs-keyword">or</span> <span class="hljs-string">&#x27;\t&#x27;</span> )
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-6">&#x00a7;</a>
+              </div>
+              <p>Function for parsing the command line of <code>amalg.lua</code> when invoked
+as a script. The following flags are supported:</p>
+<ul>
+<li><code>--</code>: stop parsing command line flags (all remaining arguments
+are considered module names)</li>
+<li><code>-a</code>, <code>--no-argfix</code>: do <em>not</em> apply the <code>arg</code> fix (local alias
+for the global <code>arg</code> table)</li>
+<li><code>-c</code>, <code>--use-cache</code>: add the modules listed in the cache file
+<code>amalg.cache</code></li>
+<li><code>-C &lt;file&gt;</code>, <code>--cache-file=&lt;file&gt;</code>: add the modules listed in
+the cache file <file></li>
+<li><code>-d</code>, <code>--debug</code>: enable debug mode (file names and line numbers
+in error messages will point to the original location)</li>
+<li><code>-f</code>, <code>--fallback</code>: use embedded modules only as a fallback</li>
+<li><code>-h</code>, <code>--help</code>: print help</li>
+<li><code>-i &lt;pattern&gt;</code>, <code>--ignore=&lt;pattern&gt;</code>: ignore modules in the
+cache file matching the given pattern (can be given multiple
+times)</li>
+<li><code>-o &lt;file&gt;</code>, <code>--output=&lt;file&gt;</code>: specify output file (default is
+<code>stdout</code>)</li>
+<li><code>-p &lt;file&gt;</code>, <code>--prefix=&lt;file&gt;</code>: use file contents as prefix
+code for the amalgamated script (i.e. usually as a package
+module stub)</li>
+<li><code>-s &lt;file&gt;</code>, <code>--script=&lt;file&gt;</code>: specify main script to bundle</li>
+<li><code>-S &lt;shebang&gt;</code>, <code>--shebang=&lt;shebang&gt;</code>: Specify shebang line to
+use for the resulting script</li>
+<li><code>-t &lt;plugin&gt;</code>, <code>--transform=&lt;plugin&gt;</code>: use transformation
+plugin (can be given multiple times)</li>
+<li><code>-v &lt;file&gt;</code>, <code>--virtual-io=&lt;file&gt;</code>: embed as virtual resource
+(can be given multiple times)</li>
+<li><code>-x</code>, <code>--c-libs</code>: also embed compiled C modules</li>
+<li><code>-z &lt;plugin&gt;</code>, <code>--zip=&lt;plugin&gt;</code>: use (de-)compression plugin
+(can be given multiple times)</li>
+</ul>
+<p>Other arguments are assumed to be module names. For an inconsistent
+command line (e.g. duplicate options) a warning is printed to the
+console.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">parsecommandline</span><span class="hljs-params">( ... )</span></span>
+  <span class="hljs-keyword">local</span> options = {
+    modules = {}, argfix = <span class="hljs-literal">true</span>, ignorepatterns = {}, plugins = {},
+    packagefieldname = <span class="hljs-string">&quot;preload&quot;</span>, virtualresources = {}
+  }
+  <span class="hljs-keyword">local</span> pluginalreadyadded = {} <span class="hljs-comment">-- to remove duplicates</span>
+
+  <span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">makesetter</span><span class="hljs-params">( what, fieldname, optionname )</span></span>
+    <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">( v )</span></span>
+      <span class="hljs-keyword">if</span> v <span class="hljs-keyword">then</span>
+        <span class="hljs-keyword">if</span> options[ fieldname ] <span class="hljs-keyword">then</span>
+          warn( <span class="hljs-string">&quot;Resetting &quot;</span>..what..<span class="hljs-string">&quot; &#x27;&quot;</span>..options[ fieldname ]..
+                <span class="hljs-string">&quot;&#x27;! Using &#x27;&quot;</span>..v..<span class="hljs-string">&quot;&#x27; now!&quot;</span> )
+        <span class="hljs-keyword">end</span>
+        options[ fieldname ] = v
+      <span class="hljs-keyword">else</span>
+        warn( <span class="hljs-string">&quot;Missing argument for &quot;</span>..optionname..<span class="hljs-string">&quot; option!&quot;</span> )
+      <span class="hljs-keyword">end</span>
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-keyword">local</span> setoutputname = makesetter( <span class="hljs-string">&quot;output file&quot;</span>, <span class="hljs-string">&quot;outputname&quot;</span>, <span class="hljs-string">&quot;-o/--output&quot;</span> )
+  <span class="hljs-keyword">local</span> setcachefilename = makesetter( <span class="hljs-string">&quot;cache file&quot;</span>, <span class="hljs-string">&quot;cachefile&quot;</span>, <span class="hljs-string">&quot;-C/--cache-file&quot;</span> )
+  <span class="hljs-keyword">local</span> setmainscript = makesetter( <span class="hljs-string">&quot;main script&quot;</span>, <span class="hljs-string">&quot;scriptname&quot;</span>, <span class="hljs-string">&quot;-s/--script&quot;</span> )
+  <span class="hljs-keyword">local</span> setshebang = makesetter( <span class="hljs-string">&quot;shebang line&quot;</span>, <span class="hljs-string">&quot;shebang&quot;</span>, <span class="hljs-string">&quot;-S/--shebang&quot;</span> )
+  <span class="hljs-keyword">local</span> setprefixfile = makesetter( <span class="hljs-string">&quot;prefix file&quot;</span>, <span class="hljs-string">&quot;prefixfile&quot;</span>, <span class="hljs-string">&quot;-p/--prefix&quot;</span> )
+
+  <span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">addignorepattern</span><span class="hljs-params">( v )</span></span>
+    <span class="hljs-keyword">if</span> v <span class="hljs-keyword">then</span>
+      <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> <span class="hljs-built_in">pcall</span>( <span class="hljs-built_in">string</span>.<span class="hljs-built_in">match</span>, <span class="hljs-string">&quot;&quot;</span>, v ) <span class="hljs-keyword">then</span>
+        warn( <span class="hljs-string">&quot;Invalid Lua pattern: &#x27;&quot;</span>..v..<span class="hljs-string">&quot;&#x27;&quot;</span> )
+      <span class="hljs-keyword">else</span>
+        options.ignorepatterns[ #options.ignorepatterns+<span class="hljs-number">1</span> ] = v
+      <span class="hljs-keyword">end</span>
+    <span class="hljs-keyword">else</span>
+      warn( <span class="hljs-string">&quot;Missing argument for -i/--ignore option!&quot;</span> )
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">addtransformation</span><span class="hljs-params">( v )</span></span>
+    <span class="hljs-keyword">if</span> v <span class="hljs-keyword">then</span>
+      <span class="hljs-keyword">local</span> transform = <span class="hljs-string">&quot;amalg.&quot;</span>..v..<span class="hljs-string">&quot;.transform&quot;</span>
+      <span class="hljs-built_in">require</span>( transform )
+      <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> pluginalreadyadded[ v ] <span class="hljs-keyword">then</span>
+        options.plugins[ #options.plugins+<span class="hljs-number">1</span> ] = { transform }
+        pluginalreadyadded[ v ] = <span class="hljs-literal">true</span>
+      <span class="hljs-keyword">end</span>
+    <span class="hljs-keyword">else</span>
+      warn( <span class="hljs-string">&quot;Missing argument for -t/--transform option!&quot;</span> )
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">addcompression</span><span class="hljs-params">( v )</span></span>
+    <span class="hljs-keyword">if</span> v <span class="hljs-keyword">then</span>
+      <span class="hljs-keyword">local</span> deflate = <span class="hljs-string">&quot;amalg.&quot;</span>..v..<span class="hljs-string">&quot;.deflate&quot;</span>
+      <span class="hljs-keyword">local</span> inflate = <span class="hljs-string">&quot;amalg.&quot;</span>..v..<span class="hljs-string">&quot;.inflate&quot;</span>
+      <span class="hljs-built_in">require</span>( deflate )
+      <span class="hljs-built_in">require</span>( inflate )
+      <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> pluginalreadyadded[ v ] <span class="hljs-keyword">then</span>
+        options.plugins[ #options.plugins+<span class="hljs-number">1</span> ] = { deflate, inflate }
+        pluginalreadyadded[ v ] = <span class="hljs-literal">true</span>
+      <span class="hljs-keyword">end</span>
+    <span class="hljs-keyword">else</span>
+      warn( <span class="hljs-string">&quot;Missing argument for -z/--zip option!&quot;</span> )
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">addvirtualioresource</span><span class="hljs-params">( v )</span></span>
+    <span class="hljs-keyword">if</span> v <span class="hljs-keyword">then</span>
+      options.virtualresources[ #options.virtualresources+<span class="hljs-number">1</span> ] = v
+    <span class="hljs-keyword">else</span>
+      warn( <span class="hljs-string">&quot;Missing argument for -v/--virtual-io option!&quot;</span> )
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-keyword">local</span> i, n = <span class="hljs-number">1</span>, <span class="hljs-built_in">select</span>( <span class="hljs-string">&#x27;#&#x27;</span>, ... )
+  <span class="hljs-keyword">while</span> i &lt;= n <span class="hljs-keyword">do</span>
+    <span class="hljs-keyword">local</span> a = <span class="hljs-built_in">select</span>( i, ... )
+    <span class="hljs-keyword">if</span> a == <span class="hljs-string">&quot;--&quot;</span> <span class="hljs-keyword">then</span>
+      <span class="hljs-keyword">for</span> j = i+<span class="hljs-number">1</span>, n <span class="hljs-keyword">do</span>
+        options.modules[ <span class="hljs-built_in">select</span>( j, ... ) ] = <span class="hljs-literal">true</span>
+      <span class="hljs-keyword">end</span>
+      <span class="hljs-keyword">break</span>
+    <span class="hljs-keyword">elseif</span> a == <span class="hljs-string">&quot;-h&quot;</span> <span class="hljs-keyword">or</span> a == <span class="hljs-string">&quot;--help&quot;</span> <span class="hljs-keyword">then</span>
+      i = i + <span class="hljs-number">1</span>
+      options.showhelp = <span class="hljs-literal">true</span>
+    <span class="hljs-keyword">elseif</span> a == <span class="hljs-string">&quot;-o&quot;</span> <span class="hljs-keyword">or</span> a == <span class="hljs-string">&quot;--output&quot;</span> <span class="hljs-keyword">then</span>
+      i = i + <span class="hljs-number">1</span>
+      setoutputname( i &lt;= n <span class="hljs-keyword">and</span> <span class="hljs-built_in">select</span>( i, ... ) )
+    <span class="hljs-keyword">elseif</span> a == <span class="hljs-string">&quot;-p&quot;</span> <span class="hljs-keyword">or</span> a == <span class="hljs-string">&quot;--prefix&quot;</span> <span class="hljs-keyword">then</span>
+      i = i + <span class="hljs-number">1</span>
+      setprefixfile( i &lt;= n <span class="hljs-keyword">and</span> <span class="hljs-built_in">select</span>( i, ... ) )
+    <span class="hljs-keyword">elseif</span> a == <span class="hljs-string">&quot;-s&quot;</span> <span class="hljs-keyword">or</span> a == <span class="hljs-string">&quot;--script&quot;</span> <span class="hljs-keyword">then</span>
+      i = i + <span class="hljs-number">1</span>
+      setmainscript( i &lt;= n <span class="hljs-keyword">and</span> <span class="hljs-built_in">select</span>( i, ... ) )
+    <span class="hljs-keyword">elseif</span> a == <span class="hljs-string">&quot;-S&quot;</span> <span class="hljs-keyword">or</span> a == <span class="hljs-string">&quot;--shebang&quot;</span> <span class="hljs-keyword">then</span>
+      i = i + <span class="hljs-number">1</span>
+      setshebang( i &lt;= n <span class="hljs-keyword">and</span> <span class="hljs-built_in">select</span>( i, ... ) )
+    <span class="hljs-keyword">elseif</span> a == <span class="hljs-string">&quot;-i&quot;</span> <span class="hljs-keyword">or</span> a == <span class="hljs-string">&quot;--ignore&quot;</span> <span class="hljs-keyword">then</span>
+      i = i + <span class="hljs-number">1</span>
+      addignorepattern( i &lt;= n <span class="hljs-keyword">and</span> <span class="hljs-built_in">select</span>( i, ... ) )
+    <span class="hljs-keyword">elseif</span> a == <span class="hljs-string">&quot;-t&quot;</span> <span class="hljs-keyword">or</span> a == <span class="hljs-string">&quot;--transform&quot;</span> <span class="hljs-keyword">then</span>
+      i = i + <span class="hljs-number">1</span>
+      addtransformation( i &lt;= n <span class="hljs-keyword">and</span> <span class="hljs-built_in">select</span>( i, ... ) )
+    <span class="hljs-keyword">elseif</span> a == <span class="hljs-string">&quot;-z&quot;</span> <span class="hljs-keyword">or</span> a == <span class="hljs-string">&quot;--zip&quot;</span> <span class="hljs-keyword">then</span>
+      i = i + <span class="hljs-number">1</span>
+      addcompression( i &lt;= n <span class="hljs-keyword">and</span> <span class="hljs-built_in">select</span>( i, ... ) )
+    <span class="hljs-keyword">elseif</span> a == <span class="hljs-string">&quot;-v&quot;</span> <span class="hljs-keyword">or</span> a == <span class="hljs-string">&quot;--virtual-io&quot;</span> <span class="hljs-keyword">then</span>
+      i = i + <span class="hljs-number">1</span>
+      addvirtualioresource( i &lt;= n <span class="hljs-keyword">and</span> <span class="hljs-built_in">select</span>( i, ... ) )
+    <span class="hljs-keyword">elseif</span> a == <span class="hljs-string">&quot;-f&quot;</span> <span class="hljs-keyword">or</span> a == <span class="hljs-string">&quot;--fallback&quot;</span> <span class="hljs-keyword">then</span>
+      options.packagefieldname = <span class="hljs-string">&quot;postload&quot;</span>
+    <span class="hljs-keyword">elseif</span> a == <span class="hljs-string">&quot;-c&quot;</span> <span class="hljs-keyword">or</span> a == <span class="hljs-string">&quot;--use-cache&quot;</span> <span class="hljs-keyword">then</span>
+      options.usecache = <span class="hljs-literal">true</span>
+    <span class="hljs-keyword">elseif</span> a == <span class="hljs-string">&quot;-C&quot;</span> <span class="hljs-keyword">or</span> a == <span class="hljs-string">&quot;--cache-file&quot;</span> <span class="hljs-keyword">then</span>
+      options.usecache = <span class="hljs-literal">true</span>
+      i = i + <span class="hljs-number">1</span>
+      setcachefilename( i &lt;= n <span class="hljs-keyword">and</span> <span class="hljs-built_in">select</span>( i, ... ) )
+    <span class="hljs-keyword">elseif</span> a == <span class="hljs-string">&quot;-x&quot;</span> <span class="hljs-keyword">or</span> a == <span class="hljs-string">&quot;--c-libs&quot;</span> <span class="hljs-keyword">then</span>
+      options.embedcmodules = <span class="hljs-literal">true</span>
+    <span class="hljs-keyword">elseif</span> a == <span class="hljs-string">&quot;-d&quot;</span> <span class="hljs-keyword">or</span> a == <span class="hljs-string">&quot;--debug&quot;</span> <span class="hljs-keyword">then</span>
+      options.debugmode = <span class="hljs-literal">true</span>
+    <span class="hljs-keyword">elseif</span> a == <span class="hljs-string">&quot;-a&quot;</span> <span class="hljs-keyword">or</span> a == <span class="hljs-string">&quot;--no-argfix&quot;</span> <span class="hljs-keyword">then</span>
+      options.argfix = <span class="hljs-literal">false</span>
+    <span class="hljs-keyword">else</span>
+      <span class="hljs-keyword">local</span> prefix = a:<span class="hljs-built_in">sub</span>( <span class="hljs-number">1</span>, <span class="hljs-number">2</span> )
+      <span class="hljs-keyword">if</span> prefix == <span class="hljs-string">&quot;-o&quot;</span> <span class="hljs-keyword">then</span>
+        setoutputname( a:<span class="hljs-built_in">sub</span>( <span class="hljs-number">3</span> ) )
+      <span class="hljs-keyword">elseif</span> prefix == <span class="hljs-string">&quot;-p&quot;</span> <span class="hljs-keyword">then</span>
+        setprefixfile( a:<span class="hljs-built_in">sub</span>( <span class="hljs-number">3</span> ) )
+      <span class="hljs-keyword">elseif</span> prefix == <span class="hljs-string">&quot;-s&quot;</span> <span class="hljs-keyword">then</span>
+        setmainscript( a:<span class="hljs-built_in">sub</span>( <span class="hljs-number">3</span> ) )
+      <span class="hljs-keyword">elseif</span> prefix == <span class="hljs-string">&quot;-S&quot;</span> <span class="hljs-keyword">then</span>
+        setshebang( a:<span class="hljs-built_in">sub</span>( <span class="hljs-number">3</span> ) )
+      <span class="hljs-keyword">elseif</span> prefix == <span class="hljs-string">&quot;-i&quot;</span> <span class="hljs-keyword">then</span>
+        addignorepattern( a:<span class="hljs-built_in">sub</span>( <span class="hljs-number">3</span> ) )
+      <span class="hljs-keyword">elseif</span> prefix == <span class="hljs-string">&quot;-t&quot;</span> <span class="hljs-keyword">then</span>
+        addtransformation( a:<span class="hljs-built_in">sub</span>( <span class="hljs-number">3</span> ) )
+      <span class="hljs-keyword">elseif</span> prefix == <span class="hljs-string">&quot;-z&quot;</span> <span class="hljs-keyword">then</span>
+        addcompression( a:<span class="hljs-built_in">sub</span>( <span class="hljs-number">3</span> ) )
+      <span class="hljs-keyword">elseif</span> prefix == <span class="hljs-string">&quot;-v&quot;</span> <span class="hljs-keyword">then</span>
+        addvirtualioresource( a:<span class="hljs-built_in">sub</span>( <span class="hljs-number">3</span> ) )
+      <span class="hljs-keyword">elseif</span> prefix == <span class="hljs-string">&quot;-C&quot;</span> <span class="hljs-keyword">then</span>
+        options.usecache = <span class="hljs-literal">true</span>
+        setcachefilename( a:<span class="hljs-built_in">sub</span>( <span class="hljs-number">3</span> ) )
+      <span class="hljs-keyword">elseif</span> a:<span class="hljs-built_in">sub</span>( <span class="hljs-number">1</span>, <span class="hljs-number">1</span> ) == <span class="hljs-string">&quot;-&quot;</span> <span class="hljs-keyword">then</span>
+        <span class="hljs-keyword">local</span> option, value = a:<span class="hljs-built_in">match</span>( <span class="hljs-string">&quot;^(%-%-[%w%-]+)=(.*)$&quot;</span> )
+        <span class="hljs-keyword">if</span> option == <span class="hljs-string">&quot;--output&quot;</span> <span class="hljs-keyword">then</span>
+          setoutputname( value )
+        <span class="hljs-keyword">elseif</span> option == <span class="hljs-string">&quot;--prefix&quot;</span> <span class="hljs-keyword">then</span>
+          setprefixfile( value )
+        <span class="hljs-keyword">elseif</span> option == <span class="hljs-string">&quot;--script&quot;</span> <span class="hljs-keyword">then</span>
+          setmainscript( value )
+        <span class="hljs-keyword">elseif</span> option == <span class="hljs-string">&quot;--shebang&quot;</span> <span class="hljs-keyword">then</span>
+          setshebang( value )
+        <span class="hljs-keyword">elseif</span> option == <span class="hljs-string">&quot;--ignore&quot;</span> <span class="hljs-keyword">then</span>
+          addignorepattern( value )
+        <span class="hljs-keyword">elseif</span> option == <span class="hljs-string">&quot;--transform&quot;</span> <span class="hljs-keyword">then</span>
+          addtransformation( value )
+        <span class="hljs-keyword">elseif</span> option == <span class="hljs-string">&quot;--zip&quot;</span> <span class="hljs-keyword">then</span>
+          addcompression( value )
+        <span class="hljs-keyword">elseif</span> option == <span class="hljs-string">&quot;--virtual-io&quot;</span> <span class="hljs-keyword">then</span>
+          addvirtualioresource( value )
+        <span class="hljs-keyword">elseif</span> option == <span class="hljs-string">&quot;--cache-file&quot;</span> <span class="hljs-keyword">then</span>
+          options.usecache = <span class="hljs-literal">true</span>
+          setcachefilename( value )
+        <span class="hljs-keyword">else</span>
+          warn( <span class="hljs-string">&quot;Unknown/invalid command line flag: &quot;</span>..a )
+        <span class="hljs-keyword">end</span>
+      <span class="hljs-keyword">else</span>
+        options.modules[ a ] = <span class="hljs-literal">true</span>
+      <span class="hljs-keyword">end</span>
+    <span class="hljs-keyword">end</span>
+    i = i + <span class="hljs-number">1</span>
+  <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">return</span> options
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-7">&#x00a7;</a>
+              </div>
+              <p>The approach for embedding precompiled Lua files is different from
+the normal way of pasting the source code, so this function detects
+whether a file is a binary file (Lua bytecode starts with the <code>ESC</code>
+character):</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">isbytecode</span><span class="hljs-params">( path )</span></span>
+  <span class="hljs-keyword">local</span> file, result = <span class="hljs-built_in">io</span>.<span class="hljs-built_in">open</span>( <span class="hljs-built_in">path</span>, <span class="hljs-string">&quot;rb&quot;</span> ), <span class="hljs-literal">false</span>
+  <span class="hljs-keyword">if</span> file <span class="hljs-keyword">then</span>
+    result = file:<span class="hljs-built_in">read</span>( <span class="hljs-number">1</span> ) == <span class="hljs-string">&quot;\027&quot;</span>
+    file:<span class="hljs-built_in">close</span>()
+  <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">return</span> result
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-8">&#x00a7;</a>
+              </div>
+              <p>The <code>readfile</code> funciton reads the whole contents of a file into
+memory without any processing.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">readfile</span><span class="hljs-params">( path, isbinary )</span></span>
+  <span class="hljs-keyword">local</span> file = <span class="hljs-built_in">assert</span>( <span class="hljs-built_in">io</span>.<span class="hljs-built_in">open</span>( <span class="hljs-built_in">path</span>, isbinary <span class="hljs-keyword">and</span> <span class="hljs-string">&quot;rb&quot;</span> <span class="hljs-keyword">or</span> <span class="hljs-string">&quot;r&quot;</span> ) )
+  <span class="hljs-keyword">local</span> data = <span class="hljs-built_in">assert</span>( file:<span class="hljs-built_in">read</span>( <span class="hljs-string">&quot;*a&quot;</span> ) )
+  file:<span class="hljs-built_in">close</span>()
+  <span class="hljs-keyword">return</span> data
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-9">&#x00a7;</a>
+              </div>
+              <p>Lua files to be embedded into the resulting amalgamation are read
+into memory in a single go, because under some circumstances (e.g.
+binary chunks, shebang lines, <code>-d</code> command line flag) some
+preprocessing/escaping is necessary. This function reads a whole
+Lua file and returns the contents as a Lua string. If there are
+compression/transformation plugins specified, the deflate parts of
+those plugins are executed on the file contents in the given order.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">readluafile</span><span class="hljs-params">( path, plugins, stdinallowed )</span></span>
+  <span class="hljs-keyword">local</span> isbinary, bytes
+  <span class="hljs-keyword">if</span> stdinallowed <span class="hljs-keyword">and</span> <span class="hljs-built_in">path</span> == <span class="hljs-string">&quot;-&quot;</span> <span class="hljs-keyword">then</span>
+    bytes = <span class="hljs-built_in">assert</span>( <span class="hljs-built_in">io</span>.<span class="hljs-built_in">read</span>( <span class="hljs-string">&quot;*a&quot;</span> ) )
+    isbinary = bytes:<span class="hljs-built_in">sub</span>( <span class="hljs-number">1</span>, <span class="hljs-number">1</span> ) == <span class="hljs-string">&quot;\027&quot;</span>
+    <span class="hljs-built_in">path</span> = <span class="hljs-string">&quot;&lt;stdin&gt;&quot;</span>
+  <span class="hljs-keyword">else</span>
+    isbinary = isbytecode( <span class="hljs-built_in">path</span> )
+    bytes = readfile( <span class="hljs-built_in">path</span>, isbinary )
+  <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">local</span> shebang
+  <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> isbinary <span class="hljs-keyword">then</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-10">&#x00a7;</a>
+              </div>
+              <p>Shebang lines are only supported by Lua at the very beginning
+of a source file, so they have to be removed before the source
+code can be embedded in the output. A byte-order-marker is
+removed as well if present.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    bytes = bytes:<span class="hljs-built_in">gsub</span>( <span class="hljs-string">&quot;^\239\187\191&quot;</span>, <span class="hljs-string">&quot;&quot;</span> )
+    shebang = bytes:<span class="hljs-built_in">match</span>( <span class="hljs-string">&quot;^(#[^\n]*)&quot;</span> )
+    bytes = bytes:<span class="hljs-built_in">gsub</span>( <span class="hljs-string">&quot;^#[^\n]*&quot;</span>, <span class="hljs-string">&quot;&quot;</span> )
+  <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">for</span> _, pluginspec <span class="hljs-keyword">in</span> <span class="hljs-built_in">ipairs</span>( plugins ) <span class="hljs-keyword">do</span>
+    <span class="hljs-keyword">local</span> r, b = <span class="hljs-built_in">require</span>( pluginspec[ <span class="hljs-number">1</span> ] )( bytes, <span class="hljs-keyword">not</span> isbinary, <span class="hljs-built_in">path</span> )
+    bytes, isbinary = r, (isbinary <span class="hljs-keyword">or</span> <span class="hljs-keyword">not</span> b)
+  <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">return</span> bytes, isbinary, shebang
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-11">&#x00a7;</a>
+              </div>
+              <p>C extension modules and virtual resources may be embedded into the
+amalgamated script as well. Compression/decompression plugins are
+applied, transformation plugins are skipped because transformation
+plugins usually expect and produce Lua source code.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">readbinfile</span><span class="hljs-params">( path, plugins )</span></span>
+  <span class="hljs-keyword">local</span> bytes = readfile( <span class="hljs-built_in">path</span>, <span class="hljs-literal">true</span> )
+  <span class="hljs-keyword">for</span> _, pluginspec <span class="hljs-keyword">in</span> <span class="hljs-built_in">ipairs</span>( plugins ) <span class="hljs-keyword">do</span>
+    <span class="hljs-keyword">if</span> pluginspec[ <span class="hljs-number">2</span> ] <span class="hljs-keyword">then</span>
+      bytes = <span class="hljs-built_in">require</span>( pluginspec[ <span class="hljs-number">1</span> ] )( bytes, <span class="hljs-literal">false</span>, <span class="hljs-built_in">path</span> )
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">return</span> bytes
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-12">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-12">&#x00a7;</a>
+              </div>
+              <p>Lua 5.1’s <code>string.format(&quot;%q&quot;)</code> doesn’t convert all control
+characters to decimal escape sequences like the newer Lua versions
+do. This might cause problems on some platforms (i.e. Windows) when
+loading a Lua script (opened in text mode) that contains binary
+code.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">qformat</span><span class="hljs-params">( code )</span></span>
+  <span class="hljs-keyword">local</span> s = (<span class="hljs-string">&quot;%q&quot;</span>):<span class="hljs-built_in">format</span>( code )
+  <span class="hljs-keyword">return</span> (s:<span class="hljs-built_in">gsub</span>( <span class="hljs-string">&quot;(%c)(%d?)&quot;</span>, <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">( c, d )</span></span>
+    <span class="hljs-keyword">if</span> c ~= <span class="hljs-string">&quot;\n&quot;</span> <span class="hljs-keyword">then</span>
+      <span class="hljs-keyword">return</span> (d~=<span class="hljs-string">&quot;&quot;</span> <span class="hljs-keyword">and</span> <span class="hljs-string">&quot;\\%03d&quot;</span> <span class="hljs-keyword">or</span> <span class="hljs-string">&quot;\\%d&quot;</span>):<span class="hljs-built_in">format</span>( c:<span class="hljs-built_in">byte</span>() )..d
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span> ))
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-13">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-13">&#x00a7;</a>
+              </div>
+              <p>When the <code>-c</code> command line flag is given, the contents of the cache
+file <code>amalg.cache</code> are used to specify the modules to embed. This
+function is used to load the cache file. <code>&lt;filename&gt;</code> is optional:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">readcache</span><span class="hljs-params">( filename )</span></span>
+  <span class="hljs-keyword">local</span> chunk = <span class="hljs-built_in">loadfile</span>( filename <span class="hljs-keyword">or</span> CACHEFILENAME, <span class="hljs-string">&quot;t&quot;</span>, {} )
+  <span class="hljs-keyword">if</span> chunk <span class="hljs-keyword">then</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-built_in">setfenv</span> <span class="hljs-keyword">then</span> <span class="hljs-built_in">setfenv</span>( chunk, {} ) <span class="hljs-keyword">end</span>
+    <span class="hljs-keyword">local</span> result = chunk()
+    <span class="hljs-keyword">if</span> <span class="hljs-built_in">type</span>( result ) == <span class="hljs-string">&quot;table&quot;</span> <span class="hljs-keyword">then</span>
+      <span class="hljs-keyword">return</span> result
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-14">&#x00a7;</a>
+              </div>
+              <p>When loaded as a module, <code>amalg.lua</code> collects Lua modules and C
+modules that are <code>require</code>d and updates the cache file
+<code>amalg.cache</code>. This function saves the updated cache contents to
+the file:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">writecache</span><span class="hljs-params">( cache )</span></span>
+  <span class="hljs-keyword">local</span> file = <span class="hljs-built_in">assert</span>( <span class="hljs-built_in">io</span>.<span class="hljs-built_in">open</span>( CACHEFILENAME, <span class="hljs-string">&quot;w&quot;</span> ) )
+  file:<span class="hljs-built_in">write</span>( <span class="hljs-string">&quot;return {\n&quot;</span> )
+  <span class="hljs-keyword">if</span> <span class="hljs-built_in">type</span>( cache[ <span class="hljs-number">1</span> ] ) == <span class="hljs-string">&quot;string&quot;</span> <span class="hljs-keyword">then</span>
+    file:<span class="hljs-built_in">write</span>( <span class="hljs-string">&quot;  &quot;</span>, qformat( cache[ <span class="hljs-number">1</span> ] ), <span class="hljs-string">&quot;,\n&quot;</span> )
+  <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">for</span> k, v <span class="hljs-keyword">in</span> <span class="hljs-built_in">pairs</span>( cache ) <span class="hljs-keyword">do</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-built_in">type</span>( k ) == <span class="hljs-string">&quot;string&quot;</span> <span class="hljs-keyword">and</span> <span class="hljs-built_in">type</span>( v ) == <span class="hljs-string">&quot;string&quot;</span> <span class="hljs-keyword">then</span>
+      file:<span class="hljs-built_in">write</span>( <span class="hljs-string">&quot;  [ &quot;</span>, qformat( k ), <span class="hljs-string">&quot; ] = &quot;</span>, qformat( v ), <span class="hljs-string">&quot;,\n&quot;</span> )
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+  file:<span class="hljs-built_in">write</span>( <span class="hljs-string">&quot;}\n&quot;</span> )
+  file:<span class="hljs-built_in">close</span>()
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-15">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-15">&#x00a7;</a>
+              </div>
+              <p>The standard Lua function <code>package.searchpath</code> available in Lua 5.2
+and up is used to locate the source files for Lua modules and
+library files for C modules. For Lua 5.1 a backport is provided.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> searchpath = <span class="hljs-built_in">package</span>.searchpath
+<span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> searchpath <span class="hljs-keyword">then</span>
+  <span class="hljs-keyword">local</span> delimiter = <span class="hljs-built_in">package</span>.<span class="hljs-built_in">config</span>:<span class="hljs-built_in">match</span>( <span class="hljs-string">&quot;^(.-)\n&quot;</span> ):<span class="hljs-built_in">gsub</span>( <span class="hljs-string">&quot;%%&quot;</span>, <span class="hljs-string">&quot;%%%%&quot;</span> )
+
+  <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">searchpath</span><span class="hljs-params">( name, path )</span></span>
+    <span class="hljs-keyword">local</span> pname = name:<span class="hljs-built_in">gsub</span>( <span class="hljs-string">&quot;%.&quot;</span>, delimiter ):<span class="hljs-built_in">gsub</span>( <span class="hljs-string">&quot;%%&quot;</span>, <span class="hljs-string">&quot;%%%%&quot;</span> )
+    <span class="hljs-keyword">local</span> messages = {}
+    <span class="hljs-keyword">for</span> subpath <span class="hljs-keyword">in</span> <span class="hljs-built_in">path</span>:<span class="hljs-built_in">gmatch</span>( <span class="hljs-string">&quot;[^;]+&quot;</span> ) <span class="hljs-keyword">do</span>
+      <span class="hljs-keyword">local</span> fpath = subpath:<span class="hljs-built_in">gsub</span>( <span class="hljs-string">&quot;%?&quot;</span>, pname )
+      <span class="hljs-keyword">local</span> file = <span class="hljs-built_in">io</span>.<span class="hljs-built_in">open</span>( fpath, <span class="hljs-string">&quot;r&quot;</span> )
+      <span class="hljs-keyword">if</span> file <span class="hljs-keyword">then</span>
+        file:<span class="hljs-built_in">close</span>()
+        <span class="hljs-keyword">return</span> fpath
+      <span class="hljs-keyword">end</span>
+      messages[ #messages+<span class="hljs-number">1</span> ] = <span class="hljs-string">&quot;\n\tno file &#x27;&quot;</span>..fpath..<span class="hljs-string">&quot;&#x27;&quot;</span>
+    <span class="hljs-keyword">end</span>
+    <span class="hljs-keyword">return</span> <span class="hljs-literal">nil</span>, <span class="hljs-built_in">table</span>.<span class="hljs-built_in">concat</span>( messages )
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-16">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-16">&#x00a7;</a>
+              </div>
+              <p>Every active plugin’s inflate part is called on the code in the reverse
+order the deflate parts were executed on the input files. The closing
+parentheses are not included in the resulting string. The
+<code>closeinflatecalls</code> function below is responsible for those.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">openinflatecalls</span><span class="hljs-params">( plugins )</span></span>
+  <span class="hljs-keyword">local</span> s = <span class="hljs-string">&quot;&quot;</span>
+  <span class="hljs-keyword">for</span> _, pluginspec <span class="hljs-keyword">in</span> <span class="hljs-built_in">ipairs</span>( plugins ) <span class="hljs-keyword">do</span>
+    <span class="hljs-keyword">if</span> pluginspec[ <span class="hljs-number">2</span> ] <span class="hljs-keyword">then</span>
+      s = s..<span class="hljs-string">&quot; require( &quot;</span>..qformat( pluginspec[ <span class="hljs-number">2</span> ] )..<span class="hljs-string">&quot; )(&quot;</span>
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">return</span> s
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-17">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-17">&#x00a7;</a>
+              </div>
+              <p>The closing parentheses needed by the result of the
+<code>openinflatecalls</code> function above is generated by this function.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">closeinflatecalls</span><span class="hljs-params">( plugins )</span></span>
+  <span class="hljs-keyword">local</span> count = <span class="hljs-number">0</span>
+  <span class="hljs-keyword">for</span> _, pluginspec <span class="hljs-keyword">in</span> <span class="hljs-built_in">ipairs</span>( plugins ) <span class="hljs-keyword">do</span>
+    <span class="hljs-keyword">if</span> pluginspec[ <span class="hljs-number">2</span> ] <span class="hljs-keyword">then</span> count = count + <span class="hljs-number">1</span> <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">return</span> (<span class="hljs-string">&quot; )&quot;</span>):<span class="hljs-built_in">rep</span>( count )
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-18">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-18">&#x00a7;</a>
+              </div>
+              <p>Lua modules are written to the output file in a format that can be
+loaded by the Lua interpreter.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">writeluamodule</span><span class="hljs-params">( out, modulename, path, plugins,
+                               packagefieldname, debugmode, argfix )</span></span>
+  <span class="hljs-keyword">local</span> bytes, isbinary = readluafile( <span class="hljs-built_in">path</span>, plugins )
+  <span class="hljs-keyword">if</span> isbinary <span class="hljs-keyword">or</span> debugmode <span class="hljs-keyword">then</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-19">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-19">&#x00a7;</a>
+              </div>
+              <p>Precompiled Lua modules are loaded via the standard Lua
+function <code>load</code> (or <code>loadstring</code> in Lua 5.1). Since this
+preserves file name and line number information, this
+approach is used for all files if the debug mode is active
+(<code>-d</code> command line option). This is also necessary if
+decompression steps need to happen or if the final
+transformation plugin produces Lua byte-code.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    out:<span class="hljs-built_in">write</span>( <span class="hljs-string">&quot;package.&quot;</span>, packagefieldname, <span class="hljs-string">&quot;[ &quot;</span>, qformat( modulename ),
+               <span class="hljs-string">&quot; ] = assert( (loadstring or load)(&quot;</span>,
+               openinflatecalls( plugins ), <span class="hljs-string">&quot; &quot;</span>,
+               qformat( bytes ), closeinflatecalls( plugins ),
+               <span class="hljs-string">&quot;, &#x27;@&#x27;..&quot;</span>, qformat( <span class="hljs-built_in">path</span> ), <span class="hljs-string">&quot; ) )\n\n&quot;</span> )
+  <span class="hljs-keyword">else</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-20">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-20">&#x00a7;</a>
+              </div>
+              <p>Under normal circumstances Lua files are pasted into a
+new anonymous vararg function, which then is put into
+<code>package.preload</code> so that <code>require</code> can find it. Each
+function gets its own <code>_ENV</code> upvalue (on Lua 5.2+), and
+special care is taken that <code>_ENV</code> always is the first
+upvalue (important for the <code>module</code> function on Lua 5.2).
+Lua 5.1 compiled with <code>LUA_COMPAT_VARARG</code> (the default) will
+create a local <code>arg</code> variable to emulate the vararg handling
+of Lua 5.0. This might interfere with Lua modules that access
+command line arguments via the <code>arg</code> global. As a workaround
+<code>amalg.lua</code> adds a local alias to the global <code>arg</code> table
+unless the <code>-a</code> command line flag is specified.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    out:<span class="hljs-built_in">write</span>( <span class="hljs-string">&quot;do\nlocal _ENV = _ENV\n&quot;</span>,
+               <span class="hljs-string">&quot;package.&quot;</span>, packagefieldname, <span class="hljs-string">&quot;[ &quot;</span>, qformat( modulename ),
+               <span class="hljs-string">&quot; ] = function( ... ) &quot;</span>,
+               argfix <span class="hljs-keyword">and</span> <span class="hljs-string">&quot;local arg = _G.arg;\n&quot;</span> <span class="hljs-keyword">or</span> <span class="hljs-string">&quot;_ENV = _ENV;\n&quot;</span>,
+               bytes:<span class="hljs-built_in">gsub</span>( <span class="hljs-string">&quot;%s*$&quot;</span>, <span class="hljs-string">&quot;&quot;</span> ), <span class="hljs-string">&quot;\nend\nend\n\n&quot;</span> )
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-21">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-21">&#x00a7;</a>
+              </div>
+              <p>This is the main function for the use case where <code>amalg.lua</code> is run
+as a script. It parses the command line, creates the output files,
+collects the module and script sources, and writes the amalgamated
+source.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">amalgamate</span><span class="hljs-params">( ... )</span></span>
+  <span class="hljs-keyword">local</span> options = parsecommandline( ... )
+  <span class="hljs-keyword">local</span> errors = {}
+
+  <span class="hljs-keyword">if</span> options.showhelp <span class="hljs-keyword">then</span>
+    <span class="hljs-built_in">print</span>( (<span class="hljs-string">[[%s &lt;options&gt; [--] &lt;modules...&gt;
+
+  available options:
+    -a, --no-argfix: disable `arg` fix
+    -c, --use-cache: take module names from `%s` cache file
+    -C &lt;file&gt;, --cache-file=&lt;file&gt;: take module names from &lt;file&gt;
+    -d, --debug: preserve file names and line numbers
+    -f, --fallback: use embedded modules as fallback only
+    -h, --help: print help/usage
+    -i &lt;pattern&gt;, --ignore=&lt;pattern&gt;: ignore matching modules from
+      cache (can be specified multiple times)
+    -o &lt;file&gt;, --output=&lt;file&gt;: write output to &lt;file&gt;
+    -p &lt;file&gt;, --prefix=&lt;file&gt;: add the file contents as prefix
+      (very early) in the amalgamation
+    -s &lt;file&gt;, --script=&lt;file&gt;: embed &lt;file&gt; as main script
+    -S &lt;shebang&gt;, --shebang=&lt;shebang&gt;: specify shebang line to use
+    -t &lt;plugin&gt;, --transform=&lt;plugin&gt;: use transformation plugin
+      (can be specified multiple times)
+    -v &lt;file&gt;, --virtual-io=&lt;file&gt;: store &lt;file&gt; in amalgamation
+      (can be specified multiple times)
+    -x, --c-libs: also embed C modules
+    -z &lt;plugin&gt;, --zip=&lt;plugin&gt;: use (de-)compression plugin
+      (can be specified multiple times)
+]]</span>):<span class="hljs-built_in">format</span>( PROGRAMNAME, CACHEFILENAME ) )
+    <span class="hljs-keyword">return</span>
+  <span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-22">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-22">&#x00a7;</a>
+              </div>
+              <p>When instructed to on the command line, the cache file is loaded,
+and the modules are added to the ones listed on the command line
+unless they are ignored via the <code>-i</code> command line option.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">if</span> options.usecache <span class="hljs-keyword">then</span>
+    <span class="hljs-keyword">local</span> cache = readcache( options.cachefile )
+    <span class="hljs-keyword">for</span> k, v <span class="hljs-keyword">in</span> <span class="hljs-built_in">pairs</span>( cache <span class="hljs-keyword">or</span> {} ) <span class="hljs-keyword">do</span>
+      <span class="hljs-keyword">local</span> addmodule = <span class="hljs-literal">true</span>
+      <span class="hljs-keyword">if</span> <span class="hljs-built_in">type</span>( k ) == <span class="hljs-string">&quot;string&quot;</span> <span class="hljs-keyword">then</span>
+        <span class="hljs-keyword">for</span> _, pattern <span class="hljs-keyword">in</span> <span class="hljs-built_in">ipairs</span>( options.ignorepatterns ) <span class="hljs-keyword">do</span>
+          <span class="hljs-keyword">if</span> k:<span class="hljs-built_in">match</span>( pattern ) <span class="hljs-keyword">then</span>
+            addmodule = <span class="hljs-literal">false</span>
+            <span class="hljs-keyword">break</span>
+          <span class="hljs-keyword">end</span>
+        <span class="hljs-keyword">end</span>
+      <span class="hljs-keyword">else</span>
+        addmodule = <span class="hljs-literal">false</span>
+        <span class="hljs-keyword">if</span> k == <span class="hljs-number">1</span> <span class="hljs-keyword">and</span> options.scriptname == <span class="hljs-literal">nil</span> <span class="hljs-keyword">then</span>
+          options.scriptname = v
+        <span class="hljs-keyword">end</span>
+      <span class="hljs-keyword">end</span>
+      <span class="hljs-keyword">if</span> addmodule <span class="hljs-keyword">then</span>
+        options.modules[ k ] = v
+      <span class="hljs-keyword">end</span>
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-keyword">local</span> out = <span class="hljs-built_in">io</span>.<span class="hljs-built_in">stdout</span>
+  <span class="hljs-keyword">if</span> options.outputname <span class="hljs-keyword">and</span> options.outputname ~= <span class="hljs-string">&quot;-&quot;</span> <span class="hljs-keyword">then</span>
+    out = <span class="hljs-built_in">assert</span>( <span class="hljs-built_in">io</span>.<span class="hljs-built_in">open</span>( options.outputname, <span class="hljs-string">&quot;w&quot;</span> ) )
+  <span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-23">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-23">&#x00a7;</a>
+              </div>
+              <p>If a main script is to be embedded, this includes the same
+shebang line that was used in the main script, so that the
+resulting amalgamation can be run without explicitly
+specifying the interpreter on unixoid systems (if a shebang
+line was specified in the first place, that is). However, a
+shebang line specifed via command line options takes precedence!</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">local</span> scriptbytes, scriptisbinary, shebang
+  <span class="hljs-keyword">if</span> options.scriptname <span class="hljs-keyword">and</span> options.scriptname ~= <span class="hljs-string">&quot;&quot;</span> <span class="hljs-keyword">then</span>
+    scriptbytes, scriptisbinary, shebang = readluafile( options.scriptname,
+                                                        options.plugins, <span class="hljs-literal">true</span> )
+    <span class="hljs-keyword">if</span> options.shebang <span class="hljs-keyword">then</span>
+      <span class="hljs-keyword">if</span> options.shebang:<span class="hljs-built_in">match</span>( <span class="hljs-string">&quot;^#!&quot;</span> ) <span class="hljs-keyword">then</span>
+        shebang = options.shebang
+      <span class="hljs-keyword">elseif</span> options.shebang:<span class="hljs-built_in">match</span>( <span class="hljs-string">&quot;^%s*$&quot;</span> ) <span class="hljs-keyword">then</span>
+        shebang = <span class="hljs-literal">nil</span>
+      <span class="hljs-keyword">else</span>
+        shebang = <span class="hljs-string">&quot;#!&quot;</span>..options.shebang
+      <span class="hljs-keyword">end</span>
+    <span class="hljs-keyword">end</span>
+    <span class="hljs-keyword">if</span> shebang <span class="hljs-keyword">then</span>
+      out:<span class="hljs-built_in">write</span>( shebang, <span class="hljs-string">&quot;\n\n&quot;</span> )
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-24">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-24">&#x00a7;</a>
+              </div>
+              <p>The <code>-p</code> command line switch allows to embed Lua code into the
+amalgamation right after the shebang line. This can be used to
+provide stubs for the standard <code>package</code> module required for
+the amalgamated script to work correctly in case the Lua
+implementation does not provide a sufficient <code>package</code> module
+implementation on its own. This is sometimes the case when Lua
+is embedded into host programs (e.g. Redis, WoW, etc.). The bits
+of the <code>package</code> module that are necessary depend on the command
+line switches given, but you will need at least <code>package.preload</code>
+and a <code>require</code> function that uses it.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">if</span> options.prefixfile <span class="hljs-keyword">then</span>
+    out:<span class="hljs-built_in">write</span>( readfile( options.prefixfile ), <span class="hljs-string">&quot;\n&quot;</span> )
+  <span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-25">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-25">&#x00a7;</a>
+              </div>
+              <p>If fallback loading is requested, the module loaders of the
+amalgamated modules are registered in table <code>package.postload</code>,
+and an extra searcher function is added at the end of
+<code>package.searchers</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">if</span> options.packagefieldname == <span class="hljs-string">&quot;postload&quot;</span> <span class="hljs-keyword">then</span>
+    out:<span class="hljs-built_in">write</span>( <span class="hljs-string">[=[
+do
+local assert = assert
+local type = assert( type )
+local searchers = package.searchers or package.loaders
+local postload = {}
+package.postload = postload
+searchers[ #searchers+1 ] = function( mod )
+  assert( type( mod ) == &quot;string&quot;, &quot;module name must be a string&quot; )
+  local loader = postload[ mod ]
+  if loader == nil then
+    return &quot;\n\tno field package.postload[&#x27;&quot;..mod..&quot;&#x27;]&quot;
+  else
+    return loader
+  end
+end
+end
+
+]=]</span> )
+  <span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-26">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-26">&#x00a7;</a>
+              </div>
+              <p>The inflate parts of every compression plugin must be included
+into the output. Later plugins can be compressed by plugins that
+have already been processed.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">local</span> activeplugins = {}
+  <span class="hljs-keyword">for</span> _, pluginspec <span class="hljs-keyword">in</span> <span class="hljs-built_in">ipairs</span>( options.plugins ) <span class="hljs-keyword">do</span>
+    <span class="hljs-keyword">if</span> pluginspec[ <span class="hljs-number">2</span> ] <span class="hljs-keyword">then</span>
+      <span class="hljs-keyword">local</span> <span class="hljs-built_in">path</span>, message  = searchpath( pluginspec[ <span class="hljs-number">2</span> ], <span class="hljs-built_in">package</span>.<span class="hljs-built_in">path</span> )
+      <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> <span class="hljs-built_in">path</span> <span class="hljs-keyword">then</span>
+        <span class="hljs-built_in">error</span>( <span class="hljs-string">&quot;module `&quot;</span>..pluginspec[ <span class="hljs-number">2</span> ]..<span class="hljs-string">&quot;&#x27; not found:&quot;</span>..NOTFOUNDPREFIX..message )
+      <span class="hljs-keyword">end</span>
+      writeluamodule( out, pluginspec[ <span class="hljs-number">2</span> ], <span class="hljs-built_in">path</span>, activeplugins, <span class="hljs-string">&quot;preload&quot;</span> )
+    <span class="hljs-keyword">end</span>
+    activeplugins[ #activeplugins+<span class="hljs-number">1</span> ] = pluginspec
+  <span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-27">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-27">&#x00a7;</a>
+              </div>
+              <p>Sorts modules alphabetically. Modules will be embedded in
+alphabetical order. This ensures deterministic output.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">local</span> modulenames = {}
+  <span class="hljs-keyword">for</span> modulename <span class="hljs-keyword">in</span> <span class="hljs-built_in">pairs</span>( options.modules ) <span class="hljs-keyword">do</span>
+    modulenames[ #modulenames+<span class="hljs-number">1</span> ] = modulename
+  <span class="hljs-keyword">end</span>
+  <span class="hljs-built_in">table</span>.<span class="hljs-built_in">sort</span>( modulenames )</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-28">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-28">&#x00a7;</a>
+              </div>
+              <p>Every module given on the command line and/or in the cache file
+is processed.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">for</span> _, modulename <span class="hljs-keyword">in</span> <span class="hljs-built_in">ipairs</span>( modulenames ) <span class="hljs-keyword">do</span>
+    <span class="hljs-keyword">local</span> moduletype = options.modules[ modulename ]</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-29">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-29">&#x00a7;</a>
+              </div>
+              <p>Only Lua modules are handled for now, so modules that are
+definitely C modules are skipped and handled later.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> moduletype ~= <span class="hljs-string">&quot;C&quot;</span> <span class="hljs-keyword">then</span>
+      <span class="hljs-keyword">local</span> <span class="hljs-built_in">path</span>, message  = searchpath( modulename, <span class="hljs-built_in">package</span>.<span class="hljs-built_in">path</span> )
+      <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> <span class="hljs-built_in">path</span> <span class="hljs-keyword">and</span> (moduletype == <span class="hljs-string">&quot;L&quot;</span> <span class="hljs-keyword">or</span> <span class="hljs-keyword">not</span> options.embedcmodules) <span class="hljs-keyword">then</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-30">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-30">&#x00a7;</a>
+              </div>
+              <p>The module is supposed to be a Lua module, but it cannot
+be found, so an error is raised.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-built_in">error</span>( <span class="hljs-string">&quot;module `&quot;</span>..modulename..<span class="hljs-string">&quot;&#x27; not found:&quot;</span>..NOTFOUNDPREFIX..message )
+      <span class="hljs-keyword">elseif</span> <span class="hljs-keyword">not</span> <span class="hljs-built_in">path</span> <span class="hljs-keyword">then</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-31">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-31">&#x00a7;</a>
+              </div>
+              <p>Module possibly is a C module, so it is tried again later.
+But the current error message is saved in case the given
+name isn’t a C module either.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        options.modules[ modulename ], errors[ modulename ] = <span class="hljs-string">&quot;C&quot;</span>, NOTFOUNDPREFIX..message
+      <span class="hljs-keyword">else</span>
+        writeluamodule( out, modulename, <span class="hljs-built_in">path</span>, options.plugins,
+                        options.packagefieldname, options.debugmode,
+                        options.argfix )
+      <span class="hljs-keyword">end</span>
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-32">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-32">&#x00a7;</a>
+              </div>
+              <p>If the <code>-x</code> command line flag is active, C modules are embedded
+as strings, and written out to temporary files on demand by the
+amalgamated code.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">if</span> options.embedcmodules <span class="hljs-keyword">then</span>
+    <span class="hljs-keyword">local</span> dllembedded = {}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-33">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-33">&#x00a7;</a>
+              </div>
+              <p>The amalgamation of C modules is split into two parts:
+One part generates a temporary file name for the C library
+and writes the binary code stored in the amalgamation to
+that file, while the second loads the resulting dynamic
+library using <code>package.loadlib</code>. The split is necessary
+because multiple modules could be loaded from the same
+library, and the amalgamated code has to simulate that.
+Shared dynamic libraries are embedded and extracted only once.</p>
+<p>To make the loading of C modules more robust, the necessary
+global functions are saved in upvalues (because user-supplied
+code might be run before a C module is loaded). The upvalues
+are local to a <code>do ... end</code> block, so they aren’t visible in
+the main script code.</p>
+<p>On Windows the result of <code>os.tmpname()</code> is not an absolute
+path by default. If that’s the case the value of the <code>TMP</code>
+environment variable is prepended to make it absolute.</p>
+<p>The temporary dynamic library files may or may not be
+cleaned up when the amalgamated code exits (this probably
+works on POSIX machines (all Lua versions) and on Windows
+with Lua 5.1). The reason is that starting with version 5.2
+Lua ensures that libraries aren’t unloaded before normal
+user-supplied <code>__gc</code> metamethods have run to avoid a case
+where such a metamethod would call an unloaded C function.
+As a consequence the amalgamated code tries to remove the
+temporary library files <em>before</em> they are actually unloaded.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">local</span> prefix = <span class="hljs-string">[=[
+do
+local assert = assert
+local os_remove = assert( os.remove )
+local package_loadlib = assert( package.loadlib )
+local dlls = {}
+local function temporarydll( code )
+  local tmpname = assert( os.tmpname() )
+  if package.config:match( &quot;^([^\n]+)&quot; ) == &quot;\\&quot; then
+    if not tmpname:match( &quot;[\\/][^\\/]+[\\/]&quot; ) then
+      local tmpdir = assert( os.getenv( &quot;TMP&quot; ) or os.getenv( &quot;TEMP&quot; ),
+                             &quot;could not detect temp directory&quot; )
+      local first = tmpname:sub( 1, 1 )
+      local hassep = first == &quot;\\&quot; or first == &quot;/&quot;
+      tmpname = tmpdir..((hassep) and &quot;&quot; or &quot;\\&quot;)..tmpname
+    end
+  end
+  local f = assert( io.open( tmpname, &quot;wb&quot; ) )
+  assert( f:write( code ) )
+  f:close()
+  local sentinel = newproxy and newproxy( true )
+                            or setmetatable( {}, { __gc = true } )
+  getmetatable( sentinel ).__gc = function() os_remove( tmpname ) end
+  return { tmpname, sentinel }
+end
+]=]</span>
+    <span class="hljs-keyword">for</span> _, modulename <span class="hljs-keyword">in</span> <span class="hljs-built_in">ipairs</span>( modulenames ) <span class="hljs-keyword">do</span>
+      <span class="hljs-keyword">local</span> moduletype = options.modules[ modulename ]
+      <span class="hljs-keyword">if</span> moduletype == <span class="hljs-string">&quot;C&quot;</span> <span class="hljs-keyword">then</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-34">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-34">&#x00a7;</a>
+              </div>
+              <p>Try a search strategy similar to the standard C module
+searcher first and then the all-in-one strategy to locate
+the library files for the C modules to embed.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">local</span> <span class="hljs-built_in">path</span>, message  = searchpath( modulename, <span class="hljs-built_in">package</span>.<span class="hljs-built_in">cpath</span> )
+        <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> <span class="hljs-built_in">path</span> <span class="hljs-keyword">then</span>
+          errors[ modulename ] = (errors[ modulename ] <span class="hljs-keyword">or</span> <span class="hljs-string">&quot;&quot;</span>)..NOTFOUNDPREFIX..message
+          <span class="hljs-built_in">path</span>, message = searchpath( modulename:<span class="hljs-built_in">gsub</span>( <span class="hljs-string">&quot;%..*$&quot;</span>, <span class="hljs-string">&quot;&quot;</span> ), <span class="hljs-built_in">package</span>.<span class="hljs-built_in">cpath</span> )
+          <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> <span class="hljs-built_in">path</span> <span class="hljs-keyword">then</span>
+            <span class="hljs-built_in">error</span>( <span class="hljs-string">&quot;module `&quot;</span>..modulename..<span class="hljs-string">&quot;&#x27; not found:&quot;</span>..
+                   errors[ modulename ]..NOTFOUNDPREFIX..message )
+          <span class="hljs-keyword">end</span>
+        <span class="hljs-keyword">end</span>
+        <span class="hljs-keyword">local</span> qpath = qformat( <span class="hljs-built_in">path</span> )</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-35">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-35">&#x00a7;</a>
+              </div>
+              <p>Builds the symbol(s) to look for in the dynamic library.
+There may be multiple candidates because of optional
+version information in the module names and the different
+approaches of the different Lua versions in handling that.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">local</span> openf = modulename:<span class="hljs-built_in">gsub</span>( <span class="hljs-string">&quot;%.&quot;</span>, <span class="hljs-string">&quot;_&quot;</span> )
+        <span class="hljs-keyword">local</span> openf1, openf2 = openf:<span class="hljs-built_in">match</span>( <span class="hljs-string">&quot;^([^%-]*)%-(.*)$&quot;</span> )
+        <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> dllembedded[ <span class="hljs-built_in">path</span> ] <span class="hljs-keyword">then</span>
+          <span class="hljs-keyword">local</span> code = readbinfile( <span class="hljs-built_in">path</span>, options.plugins )
+          dllembedded[ <span class="hljs-built_in">path</span> ] = <span class="hljs-literal">true</span>
+          <span class="hljs-keyword">local</span> qcode = qformat( code )</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-36">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-36">&#x00a7;</a>
+              </div>
+              <p>The <code>temporarydll</code> function saves the embedded binary
+code into a temporary file for later loading.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>          out:<span class="hljs-built_in">write</span>( prefix, <span class="hljs-string">&quot;\ndlls[ &quot;</span>, qpath, <span class="hljs-string">&quot; ] = temporarydll(&quot;</span>,
+                             openinflatecalls( options.plugins ), <span class="hljs-string">&quot; &quot;</span>, qcode,
+                             closeinflatecalls( options.plugins ), <span class="hljs-string">&quot; )\n&quot;</span> )
+          prefix = <span class="hljs-string">&quot;&quot;</span>
+        <span class="hljs-keyword">end</span> <span class="hljs-comment">-- shared libary not embedded already</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-37">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-37">&#x00a7;</a>
+              </div>
+              <p>Adds a function to <code>package.preload</code> to load the temporary
+DLL or shared object file. This function tries to mimic the
+behavior of Lua 5.3 which is to strip version information
+from the module name at the end first, and then at the
+beginning if that failed.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-keyword">local</span> qm = qformat( modulename )
+        out:<span class="hljs-built_in">write</span>( <span class="hljs-string">&quot;\npackage.&quot;</span>, options.packagefieldname, <span class="hljs-string">&quot;[ &quot;</span>, qm,
+                   <span class="hljs-string">&quot; ] = function()\n  local dll = dlls[ &quot;</span>, qpath,
+                   <span class="hljs-string">&quot; ][ 1 ]\n&quot;</span> )
+        <span class="hljs-keyword">if</span> openf1 <span class="hljs-keyword">then</span>
+          out:<span class="hljs-built_in">write</span>( <span class="hljs-string">&quot;  local loader = package_loadlib( dll, &quot;</span>,
+                     qformat( <span class="hljs-string">&quot;luaopen_&quot;</span>..openf1 ), <span class="hljs-string">&quot; )\n&quot;</span>,
+                     <span class="hljs-string">&quot;  if not loader then\n&quot;</span>,
+                     <span class="hljs-string">&quot;    loader = assert( package_loadlib( dll, &quot;</span>,
+                     qformat( <span class="hljs-string">&quot;luaopen_&quot;</span>..openf2 ), <span class="hljs-string">&quot; ) )\n  end\n&quot;</span> )
+        <span class="hljs-keyword">else</span>
+          out:<span class="hljs-built_in">write</span>( <span class="hljs-string">&quot;  local loader = assert( package_loadlib( dll, &quot;</span>,
+                     qformat( <span class="hljs-string">&quot;luaopen_&quot;</span>..openf ), <span class="hljs-string">&quot; ) )\n&quot;</span> )
+        <span class="hljs-keyword">end</span>
+        out:<span class="hljs-built_in">write</span>( <span class="hljs-string">&quot;  return loader( &quot;</span>, qm, <span class="hljs-string">&quot;, dll )\nend\n&quot;</span> )
+      <span class="hljs-keyword">end</span> <span class="hljs-comment">-- is a C module</span>
+    <span class="hljs-keyword">end</span> <span class="hljs-comment">-- for all given module names</span>
+    <span class="hljs-keyword">if</span> prefix == <span class="hljs-string">&quot;&quot;</span> <span class="hljs-keyword">then</span>
+      out:<span class="hljs-built_in">write</span>( <span class="hljs-string">&quot;end\n\n&quot;</span> )
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span> <span class="hljs-comment">-- if embedcmodules</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-38">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-38">&#x00a7;</a>
+              </div>
+              <p>Virtual resources are embedded like dlls, and the Lua standard
+io functions are monkey-patched to search for embedded files
+first. The amalgamated script includes a complete implementation
+of file io that works on strings embedded in the amalgamation if
+(and only if) the file is opened in read-only mode.
+To reduce the size of the embedded code, error handling is mostly
+left out (since the resources are static, you can make sure that
+no errors occur). Also, emulating the IO library for four
+different Lua versions on many different architectures and OSes
+is very challenging. Therefore, there might be corner cases
+where the virtual IO functions behave slightly differently than
+the native IO functions. This applies in particular to the <code>&quot;*n&quot;</code>
+format for <code>read</code> or <code>lines</code>.
+In addition to file IO functions and methods, <code>loadfile</code> and
+<code>dofile</code> are patched as well.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">if</span> #options.virtualresources &gt; <span class="hljs-number">0</span> <span class="hljs-keyword">then</span>
+    out:<span class="hljs-built_in">write</span>( <span class="hljs-string">[=[
+do
+local vfile = {}
+local vfile_mt = { __index = vfile }
+local assert = assert
+local select = assert( select )
+local setmetatable = assert( setmetatable )
+local tonumber = assert( tonumber )
+local type = assert( type )
+local table_unpack = assert( unpack or table.unpack )
+local io_open = assert( io.open )
+local io_lines = assert( io.lines )
+local _loadfile = assert( loadfile )
+local _dofile = assert( dofile )
+local virtual = {}
+function io.open( path, mode )
+  if (mode == &quot;r&quot; or mode == &quot;rb&quot;) and virtual[ path ] then
+    return setmetatable( { offset=0, data=virtual[ path ] }, vfile_mt )
+  else
+    return io_open( path, mode )
+  end
+end
+function io.lines( path, ... )
+  if virtual[ path ] then
+    return setmetatable( { offset=0, data=virtual[ path ] }, vfile_mt ):lines( ... )
+  else
+    return io_lines( path, ... )
+  end
+end
+function loadfile( path, ... )
+  if virtual[ path ] then
+    local s = virtual[ path ]:gsub( &quot;^%s*#[^\n]*\n&quot;, &quot;&quot; )
+    return (loadstring or load)( s, &quot;@&quot;..path, ... )
+  else
+    return _loadfile( path, ... )
+  end
+end
+function dofile( path )
+  if virtual[ path ] then
+    local s = virtual[ path ]:gsub( &quot;^%s*#[^\n]*\n&quot;, &quot;&quot; )
+    return assert( (loadstring or load)( s, &quot;@&quot;..path ) )()
+  else
+    return _dofile( path )
+  end
+end
+function vfile:close() return true end
+vfile.flush = vfile.close
+vfile.setvbuf = vfile.close
+function vfile:write() return self end
+local function lines_iterator( state )
+  return state.file:read( table_unpack( state, 1, state.n ) )
+end
+function vfile:lines( ... )
+  return lines_iterator, { file=self, n=select( &#x27;#&#x27;, ... ), ... }
+end
+local function _read( self, n, fmt, ... )
+  if n &gt; 0 then
+    local o = self.offset
+    if o &gt;= #self.data then return nil end
+    if type( fmt ) == &quot;number&quot; then
+      self.offset = o + fmt
+      return self.data:sub( o+1, self.offset ), _read( self, n-1, ... )
+    elseif fmt == &quot;n&quot; or fmt == &quot;*n&quot; then
+      local p, e, x = self.data:match( &quot;^%s*()%S+()&quot;, o+1 )
+      if p then
+        o = p - 1
+        for i = p+1, e-1 do
+          local newx = tonumber( self.data:sub( p, i ) )
+          if newx then
+            x, o = newx, i
+          elseif i &gt; o+3 then
+            break
+          end
+        end
+      else
+        o = #self.data
+      end
+      self.offset = o
+      return x, _read( self, n-1, ... )
+    elseif fmt == &quot;l&quot; or fmt == &quot;*l&quot; then
+      local s, p = self.data:match( &quot;^([^\r\n]*)\r?\n?()&quot;, o+1 )
+      self.offset = p-1
+      return s, _read( self, n-1, ... )
+    elseif fmt == &quot;L&quot; or fmt == &quot;*L&quot; then
+      local s, p = self.data:match( &quot;^([^\r\n]*\r?\n?)()&quot;, o+1 )
+      self.offset = p-1
+      return s, _read( self, n-1, ... )
+    elseif fmt == &quot;a&quot; or fmt == &quot;*a&quot; then
+      self.offset = #self.data
+      return self.data:sub( o+1, self.offset )
+    end
+  end
+end
+function vfile:read( ... )
+  local n = select( &#x27;#&#x27;, ... )
+  if n &gt; 0 then
+    return _read( self, n, ... )
+  else
+    return _read( self, 1, &quot;l&quot; )
+  end
+end
+function vfile:seek( whence, offset )
+  whence, offset = whence or &quot;cur&quot;, offset or 0
+  if whence == &quot;set&quot; then
+    self.offset = offset
+  elseif whence == &quot;cur&quot; then
+    self.offset = self.offset + offset
+  elseif whence == &quot;end&quot; then
+    self.offset = #self.data + offset
+  end
+  return self.offset
+end
+]=]</span> )
+    <span class="hljs-keyword">for</span> _, v <span class="hljs-keyword">in</span> <span class="hljs-built_in">ipairs</span>( options.virtualresources ) <span class="hljs-keyword">do</span>
+      <span class="hljs-keyword">local</span> qdata = qformat( readbinfile( v, options.plugins ) )
+      out:<span class="hljs-built_in">write</span>( <span class="hljs-string">&quot;\nvirtual[ &quot;</span>, qformat( v ), <span class="hljs-string">&quot; ] =&quot;</span>,
+                 openinflatecalls( options.plugins ), <span class="hljs-string">&quot; &quot;</span>, qdata,
+                 closeinflatecalls( options.plugins ), <span class="hljs-string">&quot;\n&quot;</span> )
+    <span class="hljs-keyword">end</span>
+    out:<span class="hljs-built_in">write</span>( <span class="hljs-string">&quot;end\n\n&quot;</span> )
+  <span class="hljs-keyword">end</span> <span class="hljs-comment">-- if #options.virtualresources &gt; 0</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-39">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-39">&#x00a7;</a>
+              </div>
+              <p>If a main script is specified on the command line (<code>-s</code> flag),
+embed it now that all dependency modules are available to
+<code>require</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">if</span> options.scriptname <span class="hljs-keyword">and</span> options.scriptname ~= <span class="hljs-string">&quot;&quot;</span> <span class="hljs-keyword">then</span>
+    <span class="hljs-keyword">if</span> scriptisbinary <span class="hljs-keyword">or</span> options.debugmode <span class="hljs-keyword">then</span>
+      <span class="hljs-keyword">if</span> options.scriptname == <span class="hljs-string">&quot;-&quot;</span> <span class="hljs-keyword">then</span>
+        options.scriptname = <span class="hljs-string">&quot;&lt;stdin&gt;&quot;</span>
+      <span class="hljs-keyword">end</span>
+      out:<span class="hljs-built_in">write</span>( <span class="hljs-string">&quot;assert( (loadstring or load)(&quot;</span>,
+                 openinflatecalls( options.plugins ), <span class="hljs-string">&quot; &quot;</span>,
+                 qformat( scriptbytes ),
+                 closeinflatecalls( options.plugins ),
+                 <span class="hljs-string">&quot;, &#x27;@&#x27;..&quot;</span>, qformat( options.scriptname ),
+                 <span class="hljs-string">&quot; ) )( ... )\n\n&quot;</span> )
+    <span class="hljs-keyword">else</span>
+      out:<span class="hljs-built_in">write</span>( scriptbytes )
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+
+  <span class="hljs-keyword">if</span> options.outputname <span class="hljs-keyword">and</span> options.outputname ~= <span class="hljs-string">&quot;-&quot;</span> <span class="hljs-keyword">then</span>
+    out:<span class="hljs-built_in">close</span>()
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-40">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-40">&#x00a7;</a>
+              </div>
+              <p>If <code>amalg.lua</code> is loaded as a module, it intercepts <code>require</code> calls
+(more specifically calls to the searcher functions) to collect all
+<code>require</code>d module names and store them in the cache. The cache file
+<code>amalg.cache</code> is updated when the program terminates.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">collect</span><span class="hljs-params">()</span></span>
+  <span class="hljs-keyword">local</span> searchers = <span class="hljs-built_in">package</span>.searchers <span class="hljs-keyword">or</span> <span class="hljs-built_in">package</span>.<span class="hljs-built_in">loaders</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-41">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-41">&#x00a7;</a>
+              </div>
+              <p>When the searchers table has been modified, it is unknown which
+elements in the table to replace, so <code>amalg.lua</code> bails out with
+an error. The <code>luarocks.loader</code> module which inserts itself at
+position 1 in the <code>package.searchers</code> table is explicitly
+supported, though!</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">local</span> offset = <span class="hljs-number">0</span>
+  <span class="hljs-keyword">if</span> <span class="hljs-built_in">package</span>.<span class="hljs-built_in">loaded</span>[ <span class="hljs-string">&quot;luarocks.loader&quot;</span> ] <span class="hljs-keyword">then</span> offset = <span class="hljs-number">1</span> <span class="hljs-keyword">end</span>
+  <span class="hljs-built_in">assert</span>( #searchers == <span class="hljs-number">4</span>+offset, <span class="hljs-string">&quot;package.searchers has been modified&quot;</span> )
+  <span class="hljs-keyword">local</span> cache = readcache() <span class="hljs-keyword">or</span> {}</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-42">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-42">&#x00a7;</a>
+              </div>
+              <p>The updated cache is written to disk when the following value is
+garbage collected, which should happen at <code>lua_close()</code>.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">local</span> sentinel = newproxy <span class="hljs-keyword">and</span> newproxy( <span class="hljs-literal">true</span> )
+                            <span class="hljs-keyword">or</span> <span class="hljs-built_in">setmetatable</span>( {}, { <span class="hljs-built_in">__gc</span> = <span class="hljs-literal">true</span> } )
+  <span class="hljs-built_in">getmetatable</span>( sentinel ).<span class="hljs-built_in">__gc</span> = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">()</span></span>
+    <span class="hljs-keyword">if</span> <span class="hljs-built_in">type</span>( <span class="hljs-built_in">arg</span> ) == <span class="hljs-string">&quot;table&quot;</span>  <span class="hljs-keyword">then</span>
+      cache[ <span class="hljs-number">1</span> ] = <span class="hljs-built_in">arg</span>[ <span class="hljs-number">0</span> ]
+    <span class="hljs-keyword">end</span>
+    writecache( cache )
+  <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">local</span> luasearcher = searchers[ <span class="hljs-number">2</span>+offset ]
+  <span class="hljs-keyword">local</span> csearcher = searchers[ <span class="hljs-number">3</span>+offset ]
+  <span class="hljs-keyword">local</span> aiosearcher = searchers[ <span class="hljs-number">4</span>+offset ] <span class="hljs-comment">-- all in one searcher</span>
+
+  <span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">addcacheentry</span><span class="hljs-params">( tag, mname, ... )</span></span>
+    <span class="hljs-keyword">if</span> <span class="hljs-built_in">type</span>( (...) ) == <span class="hljs-string">&quot;function&quot;</span> <span class="hljs-keyword">then</span>
+      cache[ mname ] = tag
+    <span class="hljs-keyword">end</span>
+    <span class="hljs-keyword">return</span> ...
+  <span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-43">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-43">&#x00a7;</a>
+              </div>
+              <p>The replacement searchers just forward to the original versions,
+but also update the cache if the search was successful.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  searchers[ <span class="hljs-number">2</span>+offset ] = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">( ... )</span></span>
+    <span class="hljs-keyword">local</span> _ = sentinel <span class="hljs-comment">-- make sure that sentinel is an upvalue</span>
+    <span class="hljs-keyword">return</span> addcacheentry( <span class="hljs-string">&quot;L&quot;</span>, ..., luasearcher( ... ) )
+  <span class="hljs-keyword">end</span>
+  searchers[ <span class="hljs-number">3</span>+offset ] = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">( ... )</span></span>
+    <span class="hljs-keyword">local</span> _ = sentinel <span class="hljs-comment">-- make sure that sentinel is an upvalue</span>
+    <span class="hljs-keyword">return</span> addcacheentry( <span class="hljs-string">&quot;C&quot;</span>, ..., csearcher( ... ) )
+  <span class="hljs-keyword">end</span>
+  searchers[ <span class="hljs-number">4</span>+offset ] = <span class="hljs-function"><span class="hljs-keyword">function</span><span class="hljs-params">( ... )</span></span>
+    <span class="hljs-keyword">local</span> _ = sentinel <span class="hljs-comment">-- make sure that sentinel is an upvalue</span>
+    <span class="hljs-keyword">return</span> addcacheentry( <span class="hljs-string">&quot;C&quot;</span>, ..., aiosearcher( ... ) )
+  <span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-44">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-44">&#x00a7;</a>
+              </div>
+              <p>Since calling <code>os.exit</code> might skip the <code>lua_close()</code> call, the
+<code>os.exit</code> function is monkey-patched to also save the updated
+cache to the cache file on disk.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-keyword">if</span> <span class="hljs-built_in">type</span>( <span class="hljs-built_in">os</span> ) == <span class="hljs-string">&quot;table&quot;</span> <span class="hljs-keyword">and</span> <span class="hljs-built_in">type</span>( <span class="hljs-built_in">os</span>.<span class="hljs-built_in">exit</span> ) == <span class="hljs-string">&quot;function&quot;</span> <span class="hljs-keyword">then</span>
+    <span class="hljs-keyword">local</span> <span class="hljs-built_in">type</span>, os_exit = <span class="hljs-built_in">type</span>, <span class="hljs-built_in">os</span>.<span class="hljs-built_in">exit</span>
+    <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">os.exit</span><span class="hljs-params">( ... )</span></span> <span class="hljs-comment">-- luacheck: ignore os</span>
+      <span class="hljs-keyword">if</span> <span class="hljs-built_in">type</span>( <span class="hljs-built_in">_G</span> ) == <span class="hljs-string">&quot;table&quot;</span> <span class="hljs-keyword">and</span>  <span class="hljs-built_in">type</span>( <span class="hljs-built_in">_G</span>.<span class="hljs-built_in">arg</span> ) == <span class="hljs-string">&quot;table&quot;</span> <span class="hljs-keyword">then</span>
+        cache[ <span class="hljs-number">1</span> ] = <span class="hljs-built_in">_G</span>.<span class="hljs-built_in">arg</span>[ <span class="hljs-number">0</span> ]
+      <span class="hljs-keyword">end</span>
+      writecache( cache )
+      <span class="hljs-keyword">return</span> os_exit( ... )
+    <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">end</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-45">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-45">&#x00a7;</a>
+              </div>
+              <p>To determine whether <code>amalg.lua</code> is run as a script or loaded as a
+module it uses the debug module to walk the call stack looking for
+a <code>require</code> call. If such a call is found, <code>amalg.lua</code> has been
+<code>require</code>d as a module.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">local</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">isscript</span><span class="hljs-params">()</span></span>
+  <span class="hljs-keyword">local</span> i = <span class="hljs-number">3</span>
+  <span class="hljs-keyword">local</span> info = <span class="hljs-built_in">debug</span>.<span class="hljs-built_in">getinfo</span>( i, <span class="hljs-string">&quot;f&quot;</span> )
+  <span class="hljs-keyword">while</span> info <span class="hljs-keyword">do</span>
+    <span class="hljs-keyword">if</span> info.func == <span class="hljs-built_in">require</span> <span class="hljs-keyword">then</span>
+      <span class="hljs-keyword">return</span> <span class="hljs-literal">false</span>
+    <span class="hljs-keyword">end</span>
+    i = i + <span class="hljs-number">1</span>
+    info = <span class="hljs-built_in">debug</span>.<span class="hljs-built_in">getinfo</span>( i, <span class="hljs-string">&quot;f&quot;</span> )
+  <span class="hljs-keyword">end</span>
+  <span class="hljs-keyword">return</span> <span class="hljs-literal">true</span>
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-46">
+            <div class="annotation">
+              
+              <div class="sswrap ">
+                <a class="ss" href="#section-46">&#x00a7;</a>
+              </div>
+              <p>This checks whether <code>amalg.lua</code> has been called as a script or
+loaded as a module and acts accordingly, by calling the
+corresponding main function:</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">if</span> isscript() <span class="hljs-keyword">then</span>
+  amalgamate( ... )
+<span class="hljs-keyword">else</span>
+  collect()
+<span class="hljs-keyword">end</span></pre></div></div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>
